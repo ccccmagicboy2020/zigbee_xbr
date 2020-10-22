@@ -1,0 +1,1858 @@
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE PROTOCOL
+OBJECT MODULE PLACED IN .\Objects\protocol.obj
+COMPILER INVOKED BY: d:\cccc2020\TOOL\Keil\C51\BIN\C51.EXE ..\User\protocol.c OPTIMIZE(SIZE) BROWSE DEBUG OBJECTEXTEND P
+                    -RINT(.\Listings\protocol.lst) TABS(2) OBJECT(.\Objects\protocol.obj)
+
+line level    source
+
+   1          /**********************************Copyright (c)**********************************
+   2          **                       版权所有 (C), 2015-2020, 涂鸦科技
+   3          **
+   4          **                             http://www.tuya.com
+   5          **
+   6          *********************************************************************************/
+   7          /**
+   8           * @file    protocol.c
+   9           * @author  涂鸦综合协议开发组
+  10           * @version v2.5.5
+  11           * @date    2020.6.1
+  12           * @brief                
+  13           *                       *******非常重要，一定要看哦！！！********
+  14           *          1. 用户在此文件中实现数据下发/上报功能
+  15           *          2. DP的ID/TYPE及数据处理函数都需要用户按照实际定义实现
+  16           *          3. 当开始某些宏定义后需要用户实现代码的函数内部有#err提示,完成函�
+             -�后请删除该#err
+  17           */
+  18          
+  19          //#include "bluetooth.h"
+  20          #include "string.h"
+  21          #include <stdio.h>
+  22          #include "wifi.h"
+  23          #include "HC89S003F4.h"
+  24          
+  25          extern u8 xdata switchcnt;      //复位模块点击次数计数
+  26          extern u8 xdata reset_bt_bn;    //复位模块的全局变量
+  27          extern u8 xdata SWITCHflag2;   //开关灯的变量
+  28          extern u8 xdata SWITCHfXBR;    //开关雷达的变量
+  29          extern u8 xdata lightvalue;    //灯亮值
+  30          extern u8 xdata XRBoffbrightvalue;  //关雷达后的灯亮值
+  31          extern ulong xdata TH;          //雷达感应偏差阈值，数值越大代表越不灵敏
+  32          extern u8 xdata LIGHT_TH;       //感光阈值
+  33          extern u16 xdata DELAY_NUM;     //感应延时，单位为秒
+  34          extern u8 xdata lowlightDELAY_NUM;      //关灯延时，单位为分钟
+  35          extern u8 xdata light_ad;               //采到的光感的瞬时值
+  36          u8 xdata cdsvalue = 0;              //感光选择值
+  37          ulong xdata sensing_th = 0;     //雷达感应阈值，数值越大越灵敏
+  38          extern  u8 idata Linkage_flag;  //联动的开关的全局
+  39          extern  u8 idata Light_on_flag; //
+  40          
+  41          //const char xdata led_bn_on[]={"led on"};
+  42          //const char xdata led_bn_off[]={"led off"};
+  43          //const char xdata radar_bn_on[]={"radar on"};
+  44          //const char xdata radar_bn_off[]={"radar off"};
+  45          
+  46          unsigned char DPID_SWITCH_LED2count = 0;
+  47          unsigned char DPID_SWITCH_XBRcount = 0;
+  48          unsigned char DPID_BRIGHT_VALUEcount = 0;
+  49          unsigned char DPID_CDScount = 0;
+  50          unsigned char DPID_PIR_DELAYcount = 0;
+  51          unsigned char DPID_STANDBY_TIMEcount = 0;
+  52          unsigned char DPID_SENSE_STRESScount = 0;
+  53          
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 2   
+
+  54          extern u16 idata groupaddr[8];
+  55          
+  56          //extern TYPE_BUFFER_S FlashBuffer;
+  57          void send_data(u8 d);
+  58          void reset_bt_module(void);
+  59          unsigned char PWM3init(unsigned char ab);
+  60          void savevar(void);
+  61          void Flash_EraseBlock(unsigned int fui_Address);//flash扇区擦除
+  62          void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);//flash写入
+  63          void Delay_us_1(uint q1);
+  64          
+  65          void reset_bt_module(void)
+  66          {
+  67   1        send_data(0x55);//p15，重置模块
+  68   1        send_data(0xAA);
+  69   1        send_data(0x00);
+  70   1        send_data(0x04);
+  71   1        send_data(0x00);
+  72   1        send_data(0x00);
+  73   1        send_data(0x03);
+  74   1      }
+  75          
+  76          /******************************************************************************
+  77                                          移植须知:
+  78          1:MCU必须在while中直接调用mcu_api.c内的wifi_uart_service()函数
+  79          2:程序正常初始化完成后,建议不进行关串口中断,如必须关中断,关中断时间必须�
+             -�,关中断会引起串口数据包丢失
+  80          3:请勿在中断/定时器中断内调用上报函数
+  81          ******************************************************************************/
+  82          
+  83          
+  84          #ifdef WEATHER_ENABLE
+              /**
+               * @var    weather_choose
+               * @brief  天气数据参数选择数组
+               * @note   用户可以自定义需要的参数，注释或者取消注释即可，注意更改
+               */
+              const char *weather_choose[WEATHER_CHOOSE_CNT] = {
+                  "temp",
+                  "humidity",
+                  "condition",
+                  "pm25",
+                  /*"pressure",
+                  "realFeel",
+                  "uvi",
+                  "tips",
+                  "windDir",
+                  "windLevel",
+                  "windSpeed",
+                  "sunRise",
+                  "sunSet",
+                  "aqi",
+                  "so2 ",
+                  "rank",
+                  "pm10",
+                  "o3",
+                  "no2",
+                  "co",*/
+              };
+              #endif
+ 113          
+ 114          
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 3   
+
+ 115          /******************************************************************************
+ 116                                        第一步:初始化
+ 117          1:在需要使用到wifi相关文件的文件中include "wifi.h"
+ 118          2:在MCU初始化中调用mcu_api.c文件中的wifi_protocol_init()函数
+ 119          3:将MCU串口单字节发送函数填入protocol.c文件中uart_transmit_output函数内,并删除#error
+ 120          4:在MCU串口接收函数中调用mcu_api.c文件内的uart_receive_input函数,并将接收到的字节�
+             -��为参数传入
+ 121          5:单片机进入while循环后调用mcu_api.c文件内的wifi_uart_service()函数
+ 122          ******************************************************************************/
+ 123          
+ 124          /******************************************************************************
+ 125                                  1:dp数据点序列类型对照表
+ 126                    **此为自动生成代码,如在开发平台有相关修改请重新下载MCU_SDK**         
+ 127          ******************************************************************************/
+ 128          const DOWNLOAD_CMD_S xdata download_cmd[] =
+ 129          {
+ 130            {DPID_SWITCH_LED, DP_TYPE_BOOL},
+ 131            {DPID_BRIGHT_VALUE, DP_TYPE_VALUE},
+ 132            {DPID_CDS, DP_TYPE_ENUM},
+ 133            {DPID_PIR_DELAY, DP_TYPE_VALUE},
+ 134            {DPID_SWITCH_XBR, DP_TYPE_BOOL},
+ 135            {DPID_STANDBY_TIME, DP_TYPE_VALUE},
+ 136            {DPID_SENSE_STRESS, DP_TYPE_VALUE},
+ 137            {DPID_SWITCH_LED2, DP_TYPE_BOOL},
+ 138            {DPID_SWITCH_LINKAGE, DP_TYPE_BOOL},
+ 139          };
+ 140          
+ 141          
+ 142          
+ 143          /******************************************************************************
+ 144                                     2:串口单字节发送函数
+ 145          请将MCU串口发送函数填入该函数内,并将接收到的数据作为参数传入串口发送函数
+ 146          ******************************************************************************/
+ 147          
+ 148          /**
+ 149           * @brief  串口发送数据
+ 150           * @param[in] {value} 串口要发送的1字节数据
+ 151           * @return Null
+ 152           */
+ 153          void uart_transmit_output(unsigned char value)
+ 154          {
+ 155   1      // #error "请将MCU串口发送函数填入该函数,并删除该行"
+ 156   1          send_data(value);
+ 157   1        
+ 158   1      /*
+ 159   1          //Example:
+ 160   1          extern void Uart_PutChar(unsigned char value);
+ 161   1          Uart_PutChar(value);                                  //串口发送函数
+ 162   1      */
+ 163   1      }
+ 164          
+ 165          /******************************************************************************
+ 166                                     第二步:实现具体用户函数
+ 167          1:APP下发数据处理
+ 168          2:数据上报处理
+ 169          ******************************************************************************/
+ 170          
+ 171          /******************************************************************************
+ 172                                      1:所有数据上报处理
+ 173          当前函数处理全部数据上报(包括可下发/可上报和只上报)
+ 174            需要用户按照实际情况实现:
+ 175            1:需要实现可下发/可上报数据点上报
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 4   
+
+ 176            2:需要实现只上报数据点上报
+ 177          此函数为MCU内部必须调用
+ 178          用户也可调用此函数实现全部数据上报
+ 179          ******************************************************************************/
+ 180          
+ 181          //自动化生成数据上报函数
+ 182          
+ 183          /**
+ 184           * @brief  系统所有dp点信息上传,实现APP和muc数据同步
+ 185           * @param  Null
+ 186           * @return Null
+ 187           * @note   此函数SDK内部需调用，MCU必须实现该函数内数据上报功能，包括只上报�
+             -�可上报可下发型数据
+ 188           */
+ 189          void all_data_update(void)
+ 190          {
+ 191   1          u8 light;
+ 192   1          u8 radius;
+ 193   1        //#error "请在此处理可下发可上报数据及只上报数据示例,处理完成后删除该行"
+ 194   1        //此代码为平台自动生成，请按照实际数据修改每个可下发可上报函数和只上报
+             -函数
+ 195   1        
+ 196   1          mcu_dp_bool_update(DPID_SWITCH_LED, reset_bt_bn); //复位模块
+ 197   1          mcu_dp_bool_update(DPID_SWITCH_LED2, SWITCHflag2); //灯的开关
+ 198   1          mcu_dp_value_update(DPID_BRIGHT_VALUE, lightvalue); //VALUE型数据上报;
+ 199   1      
+ 200   1        if(LIGHT_TH==255)
+ 201   1          light=0;
+ 202   1        else if(LIGHT_TH==200)
+ 203   1          light=2;
+ 204   1        else if(LIGHT_TH==40)
+ 205   1          light=3;    
+ 206   1        else if(LIGHT_TH==20)
+ 207   1          light=4;
+ 208   1        else //if(LIGHT_TH==200)
+ 209   1          light=5;
+ 210   1      
+ 211   1          mcu_dp_enum_update(DPID_CDS, light); //枚举型数据上报;
+ 212   1          mcu_dp_value_update(DPID_PIR_DELAY, DELAY_NUM); //VALUE型数据上报;
+ 213   1          mcu_dp_bool_update(DPID_SWITCH_XBR, SWITCHfXBR); //BOOL型数据上报;
+ 214   1          mcu_dp_value_update(DPID_STANDBY_TIME, lowlightDELAY_NUM); //VALUE型数据上报;
+ 215   1      
+ 216   1        radius=TH/10000;
+ 217   1        radius=50-radius;
+ 218   1      
+ 219   1          mcu_dp_value_update(DPID_SENSE_STRESS, radius); //VALUE型数据上报;
+ 220   1      
+ 221   1      //    mcu_dp_value_update(DPID_ADDR, 10); //VALUE型数据上报;
+ 222   1      //    mcu_dp_value_update(DPID_ADDREND, 11); //VALUE型数据上报;
+ 223   1      //    mcu_dp_value_update(DPID_GROUP, 12); //VALUE型数据上报;
+ 224   1      
+ 225   1      
+ 226   1      //    mcu_dp_string_update(DPID_DEBUG, "1012", 4); //STRING型数据上报;
+ 227   1      
+ 228   1      
+ 229   1          //mcu_dp_bool_update(DPID_TEST_BN0,当前测试开关0); //BOOL型数据上报;
+ 230   1          //mcu_dp_bool_update(DPID_TEST_BN1,当前测试开关1); //BOOL型数据上报;
+ 231   1          //mcu_dp_bool_update(DPID_TEST_BN2,当前测试开关2); //BOOL型数据上报;
+ 232   1        
+ 233   1        mcu_dp_bool_update(DPID_SWITCH_LINKAGE,Linkage_flag); //BOOL型数据上报;
+ 234   1      
+ 235   1      
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 5   
+
+ 236   1      
+ 237   1      }
+ 238          
+ 239          
+ 240          /******************************************************************************
+ 241                                          WARNING!!!    
+ 242                                      2:所有数据上报处理
+ 243          自动化代码模板函数,具体请用户自行实现数据处理
+ 244          ******************************************************************************/
+ 245          /*****************************************************************************
+ 246          函数名称 : dp_download_switch_led_handle
+ 247          功能描述 : 针对DPID_SWITCH_LED的处理函数
+ 248          输入参数 : value:数据源数据
+ 249                  : length:数据长度
+ 250          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 251          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 252          *****************************************************************************/
+ 253          static unsigned char dp_download_switch_led_handle(const unsigned char value[], unsigned short length)
+ 254          {
+ 255   1          //示例:当前DP类型为BOOL
+ 256   1          unsigned char ret;
+ 257   1          //0:关/1:开
+ 258   1          unsigned char switch_led;
+ 259   1          
+ 260   1          switch_led = mcu_get_dp_download_bool(value,length);
+ 261   1      
+ 262   1          reset_bt_bn = switch_led;
+ 263   1        
+ 264   1          
+ 265   1          //处理完DP数据后应有反馈
+ 266   1          ret = mcu_dp_bool_update(DPID_SWITCH_LED, reset_bt_bn);
+ 267   1          if(ret == SUCCESS)
+ 268   1              return SUCCESS;
+ 269   1          else
+ 270   1              return ERROR;
+ 271   1      }
+ 272          /*****************************************************************************
+ 273          函数名称 : dp_download_bright_value_handle
+ 274          功能描述 : 针对DPID_BRIGHT_VALUE的处理函数
+ 275          输入参数 : value:数据源数据
+ 276                  : length:数据长度
+ 277          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 278          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 279          *****************************************************************************/
+ 280          static unsigned char dp_download_bright_value_handle(const unsigned char value[], unsigned short length)
+ 281          {
+ 282   1          //示例:当前DP类型为VALUE
+ 283   1          unsigned char ret;
+ 284   1          unsigned long bright_value;
+ 285   1          unsigned char i;
+ 286   1          
+ 287   1          bright_value = mcu_get_dp_download_value(value,length);
+ 288   1        
+ 289   1        DPID_BRIGHT_VALUEcount++;
+ 290   1        if(bright_value==lightvalue)
+ 291   1        {
+ 292   2      /*    if(DPID_BRIGHT_VALUEcount<2)
+ 293   2          {
+ 294   2            //DPID_BRIGHT_VALUEcount = 0;
+ 295   2            
+ 296   2            for(i=0;i<8;i++)
+ 297   2            {
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 6   
+
+ 298   2              if(groupaddr[i] != 0)
+ 299   2              {
+ 300   2                mcu_dp_value_mesh_update(DPID_BRIGHT_VALUE,bright_value,groupaddr[i]);
+ 301   2              }
+ 302   2            }
+ 303   2          } */
+ 304   2        }
+ 305   1        else
+ 306   1        {
+ 307   2          DPID_BRIGHT_VALUEcount=0;
+ 308   2          for(i=0;i<8;i++)
+ 309   2          {
+ 310   3      //      if(groupaddr[i] != 0)
+ 311   3      //      {
+ 312   3      //        mcu_dp_value_mesh_update(DPID_BRIGHT_VALUE,bright_value,groupaddr[i]);
+ 313   3      //      }
+ 314   3          }
+ 315   2        } 
+ 316   1        
+ 317   1          lightvalue = bright_value;
+ 318   1      
+ 319   1        if(SWITCHfXBR==0)
+ 320   1        {
+ 321   2          XRBoffbrightvalue = bright_value;
+ 322   2        }
+ 323   1        
+ 324   1        savevar();
+ 325   1          
+ 326   1          //处理完DP数据后应有反馈
+ 327   1          ret = mcu_dp_value_update(DPID_BRIGHT_VALUE, lightvalue);
+ 328   1      
+ 329   1          if(ret == SUCCESS)
+ 330   1              return SUCCESS;
+ 331   1          else
+ 332   1              return ERROR;
+ 333   1      }
+ 334          /*****************************************************************************
+ 335          函数名称 : dp_download_cds_handle
+ 336          功能描述 : 针对DPID_CDS的处理函数
+ 337          输入参数 : value:数据源数据
+ 338                  : length:数据长度
+ 339          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 340          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 341          *****************************************************************************/
+ 342          static unsigned char dp_download_cds_handle(const unsigned char value[], unsigned short length)
+ 343          {
+ 344   1          //示例:当前DP类型为ENUM
+ 345   1          unsigned char ret;
+ 346   1          unsigned char cds;
+ 347   1          unsigned char i;
+ 348   1          
+ 349   1          cds = mcu_get_dp_download_enum(value,length);
+ 350   1        
+ 351   1        DPID_CDScount++;
+ 352   1        if(cds==cdsvalue)
+ 353   1        {
+ 354   2          if(DPID_CDScount<2)
+ 355   2          {
+ 356   3      /*      for(i=0;i<8;i++)
+ 357   3            {
+ 358   3              if(groupaddr[i] != 0)
+ 359   3              {
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 7   
+
+ 360   3                mcu_dp_enum_mesh_update(DPID_CDS,cds,groupaddr[i]);
+ 361   3              }
+ 362   3            } */
+ 363   3          }
+ 364   2          if((cds==5)&&(light_ad!=LIGHT_TH))
+ 365   2          {
+ 366   3            DPID_CDScount=0;
+ 367   3          }
+ 368   2        }
+ 369   1        else
+ 370   1        {
+ 371   2          DPID_CDScount=0;
+ 372   2          for(i=0;i<8;i++)
+ 373   2          {
+ 374   3      //      if(groupaddr[i] != 0)
+ 375   3      //      {
+ 376   3      //        mcu_dp_enum_mesh_update(DPID_CDS,cds,groupaddr[i]);
+ 377   3      //      }
+ 378   3          }
+ 379   2        } 
+ 380   1        
+ 381   1          switch(cds) {
+ 382   2              case 0:   //2000LUS
+ 383   2            LIGHT_TH=255;//cds*4;
+ 384   2              break;
+ 385   2              
+ 386   2              case 1:   //300LUX
+ 387   2            LIGHT_TH=255;//cds*4;
+ 388   2              break;
+ 389   2              
+ 390   2              case 2:   //50LUX
+ 391   2            LIGHT_TH=200;
+ 392   2              break;
+ 393   2              
+ 394   2              case 3: //10LUX
+ 395   2            LIGHT_TH=40;
+ 396   2              break;
+ 397   2              
+ 398   2              case 4: //5LUX
+ 399   2            LIGHT_TH=20;
+ 400   2              break;
+ 401   2              
+ 402   2          case 5:
+ 403   2            LIGHT_TH = light_ad;
+ 404   2          break;
+ 405   2              
+ 406   2              default:
+ 407   2          
+ 408   2              break;
+ 409   2          }
+ 410   1      
+ 411   1          cdsvalue = cds;
+ 412   1      
+ 413   1          savevar();
+ 414   1          //sprintf(temp_str, "%3d", LIGHT_TH);
+ 415   1          //mcu_dp_string_update(DPID_DEBUG, temp_str, strlen(temp_str));
+ 416   1          //处理完DP数据后应有反馈
+ 417   1          ret = mcu_dp_enum_update(DPID_CDS, cdsvalue);
+ 418   1          if(ret == SUCCESS)
+ 419   1              return SUCCESS;
+ 420   1          else
+ 421   1              return ERROR;
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 8   
+
+ 422   1      }
+ 423          /*****************************************************************************
+ 424          函数名称 : dp_download_pir_delay_handle
+ 425          功能描述 : 针对DPID_PIR_DELAY的处理函数
+ 426          输入参数 : value:数据源数据
+ 427                  : length:数据长度
+ 428          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 429          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 430          *****************************************************************************/
+ 431          static unsigned char dp_download_pir_delay_handle(const unsigned char value[], unsigned short length)
+ 432          {
+ 433   1          //示例:当前DP类型为VALUE
+ 434   1          unsigned char ret;
+ 435   1          unsigned long pir_delay;
+ 436   1          unsigned char i;
+ 437   1          
+ 438   1          pir_delay = mcu_get_dp_download_value(value,length);
+ 439   1          /*
+ 440   1          //VALUE类型数据处理
+ 441   1          */
+ 442   1        
+ 443   1        DPID_PIR_DELAYcount++;
+ 444   1        if(pir_delay==DELAY_NUM)
+ 445   1        {
+ 446   2      /*    if(DPID_PIR_DELAYcount<2)
+ 447   2          {
+ 448   2            for(i=0;i<8;i++)
+ 449   2            {
+ 450   2              if(groupaddr[i] != 0)
+ 451   2              {
+ 452   2                mcu_dp_value_mesh_update(DPID_PIR_DELAY,pir_delay,groupaddr[i]);
+ 453   2              }
+ 454   2            }
+ 455   2          } */
+ 456   2        }
+ 457   1        else
+ 458   1        {
+ 459   2          DPID_PIR_DELAYcount=0;
+ 460   2          for(i=0;i<8;i++)
+ 461   2          {
+ 462   3      //      if(groupaddr[i] != 0)
+ 463   3      //      {
+ 464   3      //        mcu_dp_value_mesh_update(DPID_PIR_DELAY,pir_delay,groupaddr[i]);
+ 465   3      //      }
+ 466   3          }
+ 467   2        }
+ 468   1        
+ 469   1          DELAY_NUM = pir_delay;
+ 470   1        savevar();
+ 471   1          
+ 472   1          //处理完DP数据后应有反馈
+ 473   1          ret = mcu_dp_value_update(DPID_PIR_DELAY, DELAY_NUM);
+ 474   1          if(ret == SUCCESS)
+ 475   1              return SUCCESS;
+ 476   1          else
+ 477   1              return ERROR;
+ 478   1      }
+ 479          /*****************************************************************************
+ 480          函数名称 : dp_download_switch_xbr_handle
+ 481          功能描述 : 针对DPID_SWITCH_XBR的处理函数
+ 482          输入参数 : value:数据源数据
+ 483                  : length:数据长度
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 9   
+
+ 484          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 485          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 486          *****************************************************************************/
+ 487          static unsigned char dp_download_switch_xbr_handle(const unsigned char value[], unsigned short length)
+ 488          {
+ 489   1          //示例:当前DP类型为BOOL
+ 490   1          unsigned char ret;
+ 491   1          //0:关/1:开
+ 492   1          unsigned char switch_xbr;
+ 493   1          unsigned char i;
+ 494   1          
+ 495   1          switch_xbr = mcu_get_dp_download_bool(value,length);
+ 496   1        
+ 497   1        DPID_SWITCH_XBRcount++;
+ 498   1        if(switch_xbr==SWITCHfXBR)
+ 499   1        {
+ 500   2      /*    if(DPID_SWITCH_XBRcount<2)
+ 501   2          {
+ 502   2            for(i=0;i<8;i++)
+ 503   2            {
+ 504   2              if(groupaddr[i] != 0)
+ 505   2              {
+ 506   2                mcu_dp_bool_mesh_update(DPID_SWITCH_XBR,switch_xbr,groupaddr[i]);
+ 507   2              }
+ 508   2            }
+ 509   2          } */
+ 510   2        }
+ 511   1        else
+ 512   1        {
+ 513   2          DPID_SWITCH_XBRcount=0;
+ 514   2          for(i=0;i<8;i++)
+ 515   2          {
+ 516   3      //      if(groupaddr[i] != 0)
+ 517   3      //      {
+ 518   3      //        mcu_dp_bool_mesh_update(DPID_SWITCH_XBR,switch_xbr,groupaddr[i]);
+ 519   3      //      }
+ 520   3          }
+ 521   2        
+ 522   2        }
+ 523   1        
+ 524   1          if(switch_xbr == 0) {
+ 525   2              //开关关
+ 526   2              SWITCHfXBR = 0;
+ 527   2              //mcu_dp_string_update(DPID_DEBUG, radar_bn_off, strlen(radar_bn_off));
+ 528   2          }else {
+ 529   2              //开关开
+ 530   2              SWITCHfXBR = 1;
+ 531   2              //mcu_dp_string_update(DPID_DEBUG, radar_bn_on, strlen(radar_bn_on));
+ 532   2          }
+ 533   1        
+ 534   1          savevar();
+ 535   1          //处理完DP数据后应有反馈
+ 536   1          ret = mcu_dp_bool_update(DPID_SWITCH_XBR,SWITCHfXBR);
+ 537   1          if(ret == SUCCESS)
+ 538   1              return SUCCESS;
+ 539   1          else
+ 540   1              return ERROR;
+ 541   1      }
+ 542          /*****************************************************************************
+ 543          函数名称 : dp_download_standby_time_handle
+ 544          功能描述 : 针对DPID_STANDBY_TIME的处理函数
+ 545          输入参数 : value:数据源数据
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 10  
+
+ 546                  : length:数据长度
+ 547          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 548          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 549          *****************************************************************************/
+ 550          static unsigned char dp_download_standby_time_handle(const unsigned char value[], unsigned short length)
+ 551          {
+ 552   1          //示例:当前DP类型为VALUE
+ 553   1          unsigned char ret;
+ 554   1          unsigned long standby_time;
+ 555   1          unsigned char i;
+ 556   1          
+ 557   1          standby_time = mcu_get_dp_download_value(value,length);
+ 558   1          /*
+ 559   1          //VALUE类型数据处理
+ 560   1          
+ 561   1          */
+ 562   1        DPID_STANDBY_TIMEcount++;
+ 563   1        if(standby_time==lowlightDELAY_NUM)
+ 564   1        {
+ 565   2      /*    if(DPID_STANDBY_TIMEcount<2)
+ 566   2          {
+ 567   2            for(i=0;i<8;i++)
+ 568   2            {
+ 569   2              if(groupaddr[i] != 0)
+ 570   2              {
+ 571   2                mcu_dp_value_mesh_update(DPID_STANDBY_TIME,standby_time,groupaddr[i]);
+ 572   2              }
+ 573   2            }
+ 574   2          } */
+ 575   2        }
+ 576   1        else
+ 577   1        {
+ 578   2          DPID_STANDBY_TIMEcount=0;
+ 579   2          for(i=0;i<8;i++)
+ 580   2            {
+ 581   3      //        if(groupaddr[i] != 0)
+ 582   3      //        {
+ 583   3      //          mcu_dp_value_mesh_update(DPID_STANDBY_TIME,standby_time,groupaddr[i]);
+ 584   3      //        }
+ 585   3            }
+ 586   2        
+ 587   2        }
+ 588   1        
+ 589   1          lowlightDELAY_NUM=standby_time;
+ 590   1          
+ 591   1          savevar();
+ 592   1          //处理完DP数据后应有反馈
+ 593   1          ret = mcu_dp_value_update(DPID_STANDBY_TIME, lowlightDELAY_NUM);
+ 594   1          if(ret == SUCCESS)
+ 595   1              return SUCCESS;
+ 596   1          else
+ 597   1              return ERROR;
+ 598   1      }
+ 599          /*****************************************************************************
+ 600          函数名称 : dp_download_sense_stress_handle
+ 601          功能描述 : 针对DPID_SENSE_STRESS的处理函数
+ 602          输入参数 : value:数据源数据
+ 603                  : length:数据长度
+ 604          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 605          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 606          *****************************************************************************/
+ 607          static unsigned char dp_download_sense_stress_handle(const unsigned char value[], unsigned short length)
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 11  
+
+ 608          {
+ 609   1          //示例:当前DP类型为VALUE
+ 610   1          unsigned char ret;
+ 611   1          unsigned long sense_stress;
+ 612   1          unsigned char i;
+ 613   1          
+ 614   1          sense_stress = mcu_get_dp_download_value(value,length);
+ 615   1          /*
+ 616   1          //VALUE类型数据处理
+ 617   1          
+ 618   1          */
+ 619   1        DPID_SENSE_STRESScount++;
+ 620   1        if(sense_stress==sensing_th)
+ 621   1        {
+ 622   2      /*    if(DPID_SENSE_STRESScount<2)
+ 623   2          {
+ 624   2            for(i=0;i<8;i++)
+ 625   2            {
+ 626   2              if(groupaddr[i] != 0)
+ 627   2              {
+ 628   2                mcu_dp_value_mesh_update(DPID_SENSE_STRESS,sense_stress,groupaddr[i]);
+ 629   2              }
+ 630   2            }
+ 631   2          } */
+ 632   2        }
+ 633   1        else
+ 634   1        {
+ 635   2          DPID_SENSE_STRESScount=0;
+ 636   2          for(i=0;i<8;i++)
+ 637   2          {
+ 638   3      //      if(groupaddr[i] != 0)
+ 639   3      //      {
+ 640   3      //        mcu_dp_value_mesh_update(DPID_SENSE_STRESS,sense_stress,groupaddr[i]);
+ 641   3      //      }
+ 642   3          }
+ 643   2        } 
+ 644   1        
+ 645   1        sensing_th = sense_stress;
+ 646   1        TH=(50-sense_stress)*10000;
+ 647   1          
+ 648   1        savevar();
+ 649   1          
+ 650   1          //sprintf(temp_str, "%6d", TH);
+ 651   1          //mcu_dp_string_update(DPID_DEBUG, temp_str, strlen(temp_str));    
+ 652   1          //处理完DP数据后应有反馈
+ 653   1          ret = mcu_dp_value_update(DPID_SENSE_STRESS, sensing_th);
+ 654   1          if(ret == SUCCESS)
+ 655   1              return SUCCESS;
+ 656   1          else
+ 657   1              return ERROR;
+ 658   1      }
+ 659          /*****************************************************************************
+ 660          函数名称 : dp_download_switch_led2_handle
+ 661          功能描述 : 针对DPID_SWITCH_LED2的处理函数
+ 662          输入参数 : value:数据源数据
+ 663                  : length:数据长度
+ 664          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 665          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 666          *****************************************************************************/
+ 667          static unsigned char dp_download_switch_led2_handle(const unsigned char value[], unsigned short length)
+ 668          {
+ 669   1          //示例:当前DP类型为BOOL
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 12  
+
+ 670   1          unsigned char ret;
+ 671   1          //0:关/1:开
+ 672   1          unsigned char switch_led2;
+ 673   1          unsigned char i;
+ 674   1          
+ 675   1          switch_led2 = mcu_get_dp_download_bool(value,length);
+ 676   1      
+ 677   1          DPID_SWITCH_LED2count++;
+ 678   1          if(switch_led2==SWITCHflag2)
+ 679   1          {
+ 680   2      /*      if(DPID_SWITCH_LED2count<2)
+ 681   2            {
+ 682   2              for(i=0;i<8;i++)
+ 683   2              {
+ 684   2                if(groupaddr[i] != 0)
+ 685   2                {
+ 686   2                  mcu_dp_bool_mesh_update(DPID_SWITCH_LED2,switch_led2,groupaddr[i]);
+ 687   2                }
+ 688   2              }
+ 689   2            } */
+ 690   2          }
+ 691   1          else
+ 692   1          {
+ 693   2            DPID_SWITCH_LED2count=0;
+ 694   2            for(i=0;i<8;i++)
+ 695   2            {
+ 696   3      //        if(groupaddr[i] != 0)
+ 697   3      //        {
+ 698   3      //          mcu_dp_bool_mesh_update(DPID_SWITCH_LED2,switch_led2,groupaddr[i]);
+ 699   3      //        }
+ 700   3            }   
+ 701   2      
+ 702   2          }
+ 703   1      
+ 704   1          if(switch_led2 == 0) {
+ 705   2              //灯开关关
+ 706   2              SWITCHflag2=0;
+ 707   2          }else {
+ 708   2              //灯开关开
+ 709   2              //mcu_dp_string_update(DPID_DEBUG, led_bn_on, strlen(led_bn_on));
+ 710   2              if(SWITCHfXBR==1)
+ 711   2          {
+ 712   3            Light_on_flag=1;
+ 713   3          }
+ 714   2              SWITCHflag2=1;
+ 715   2          }
+ 716   1        
+ 717   1          //处理完DP数据后应有反馈
+ 718   1          ret = mcu_dp_bool_update(DPID_SWITCH_LED2, SWITCHflag2);
+ 719   1          if(ret == SUCCESS)
+ 720   1              return SUCCESS;
+ 721   1          else
+ 722   1              return ERROR;
+ 723   1      }
+ 724          /*****************************************************************************
+ 725          函数名称 : dp_download_switch_linkage_handle
+ 726          功能描述 : 针对DPID_SWITCH_LINKAGE的处理函数
+ 727          输入参数 : value:数据源数据
+ 728                  : length:数据长度
+ 729          返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+ 730          使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+ 731          *****************************************************************************/
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 13  
+
+ 732          static unsigned char dp_download_switch_linkage_handle(const unsigned char value[], unsigned short length)
+ 733          {
+ 734   1          //示例:当前DP类型为BOOL
+ 735   1          unsigned char ret;
+ 736   1          //0:关/1:开
+ 737   1          unsigned char switch_Linkage;
+ 738   1          unsigned char i;
+ 739   1          switch_Linkage = mcu_get_dp_download_bool(value,length);
+ 740   1          
+ 741   1        if(switch_Linkage==Linkage_flag)
+ 742   1        {
+ 743   2          //
+ 744   2        }
+ 745   1        else
+ 746   1        {
+ 747   2          for(i=0;i<8;i++)
+ 748   2          {
+ 749   3      //      if(groupaddr[i] != 0)
+ 750   3      //      {
+ 751   3      //        mcu_dp_bool_mesh_update(DPID_SWITCH_LINKAGE,switch_Linkage,groupaddr[i]);
+ 752   3      //      }
+ 753   3          }
+ 754   2        }
+ 755   1          if(switch_Linkage == 0) {
+ 756   2              //雷达开关关
+ 757   2              //LIGHT_OFF;
+ 758   2              //PWM3init(0);
+ 759   2              Linkage_flag=0;
+ 760   2          }else {
+ 761   2              //雷达开关开
+ 762   2              //LIGHT_ON;
+ 763   2              //PWM3init(100);
+ 764   2              Linkage_flag=1;
+ 765   2          }
+ 766   1          
+ 767   1          //处理完DP数据后应有反馈
+ 768   1          ret = mcu_dp_bool_update(DPID_SWITCH_LINKAGE,switch_Linkage);
+ 769   1          if(ret == SUCCESS)
+ 770   1              return SUCCESS;
+ 771   1          else
+ 772   1              return ERROR;
+ 773   1      }
+ 774          
+ 775          
+ 776          
+ 777          
+ 778          /******************************************************************************
+ 779                                          WARNING!!!                     
+ 780          此部分函数用户请勿修改!!
+ 781          ******************************************************************************/
+ 782          
+ 783          /**
+ 784           * @brief  dp下发处理函数
+ 785           * @param[in] {dpid} dpid 序号
+ 786           * @param[in] {value} dp数据缓冲区地址
+ 787           * @param[in] {length} dp数据长度
+ 788           * @return dp处理结果
+ 789           * -           0(ERROR): 失败
+ 790           * -           1(SUCCESS): 成功
+ 791           * @note   该函数用户不能修改
+ 792           */
+ 793          unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[], unsigned short length)
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 14  
+
+ 794          {
+ 795   1          /*********************************
+ 796   1          当前函数处理可下发/可上报数据调用                    
+ 797   1          具体函数内需要实现下发数据处理
+ 798   1          完成用需要将处理结果反馈至APP端,否则APP会认为下发失败
+ 799   1          ***********************************/
+ 800   1          unsigned char ret;
+ 801   1          switch(dpid) {
+ 802   2              case DPID_SWITCH_LED:
+ 803   2                  //开关处理函数
+ 804   2                  ret = dp_download_switch_led_handle(value,length);
+ 805   2            if(ret==1)
+ 806   2            {
+ 807   3              switchcnt ++;
+ 808   3              if(switchcnt>=5)
+ 809   3              {
+ 810   4                switchcnt = 0;
+ 811   4                          reset_bt_module();
+ 812   4              }
+ 813   3            }
+ 814   2              break;
+ 815   2              case DPID_BRIGHT_VALUE:
+ 816   2                  //亮度值处理函数
+ 817   2                  ret = dp_download_bright_value_handle(value,length);
+ 818   2                  switchcnt = 0;
+ 819   2              break;
+ 820   2              case DPID_CDS:
+ 821   2                  //光敏参数处理函数
+ 822   2                  ret = dp_download_cds_handle(value,length);
+ 823   2                  switchcnt = 0;
+ 824   2              break;
+ 825   2              case DPID_PIR_DELAY:
+ 826   2                  //感应延时处理函数
+ 827   2                  ret = dp_download_pir_delay_handle(value,length);
+ 828   2                  switchcnt = 0;
+ 829   2              break;
+ 830   2              case DPID_SWITCH_XBR:
+ 831   2                  //感应开关处理函数
+ 832   2                  ret = dp_download_switch_xbr_handle(value,length);
+ 833   2                  switchcnt = 0;
+ 834   2              break;
+ 835   2              case DPID_STANDBY_TIME:
+ 836   2                  //伴亮延时处理函数
+ 837   2                  ret = dp_download_standby_time_handle(value,length);
+ 838   2                  switchcnt = 0;
+ 839   2              break;
+ 840   2              case DPID_SENSE_STRESS:
+ 841   2                  //感应强度处理函数
+ 842   2                  ret = dp_download_sense_stress_handle(value,length);
+ 843   2                  switchcnt = 0;
+ 844   2              break;
+ 845   2              case DPID_SWITCH_LED2:
+ 846   2                  //灯开关处理函数
+ 847   2                  ret = dp_download_switch_led2_handle(value,length);
+ 848   2                  switchcnt = 0;
+ 849   2              break;
+ 850   2              case DPID_SWITCH_LINKAGE:
+ 851   2                  //联动 处理函数
+ 852   2                  ret = dp_download_switch_linkage_handle(value,length);
+ 853   2                  switchcnt = 0;
+ 854   2              break;
+ 855   2      
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 15  
+
+ 856   2        default:
+ 857   2              switchcnt = 0;
+ 858   2          break;
+ 859   2        }
+ 860   1        return ret;
+ 861   1      }
+ 862          
+ 863          /**
+ 864           * @brief  获取所有dp命令总和
+ 865           * @param[in] Null
+ 866           * @return 下发命令总和
+ 867           * @note   该函数用户不能修改
+ 868           */
+ 869          unsigned char get_download_cmd_total(void)
+ 870          {
+ 871   1          return(sizeof(download_cmd) / sizeof(download_cmd[0]));
+ 872   1      }
+ 873          
+ 874          
+ 875          /******************************************************************************
+ 876                                          WARNING!!!                     
+ 877          此代码为SDK内部调用,请按照实际dp数据实现函数内部数据
+ 878          ******************************************************************************/
+ 879          
+ 880          #ifdef SUPPORT_MCU_FIRM_UPDATE
+              /**
+               * @brief  升级包大小选择
+               * @param[in] {package_sz} 升级包大小
+               * @ref           0x00: 256byte (默认)
+               * @ref           0x01: 512byte
+               * @ref           0x02: 1024byte
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void upgrade_package_choose(unsigned char package_sz)
+              {
+                  #error "请自行实现请自行实现升级包大小选择代码,完成后请删除该行"
+                  unsigned short send_len = 0;
+                  send_len = set_wifi_uart_byte(send_len, package_sz);
+                  wifi_uart_write_frame(UPDATE_START_CMD, MCU_TX_VER, send_len);
+              }
+              
+              /**
+               * @brief  MCU进入固件升级模式
+               * @param[in] {value} 固件缓冲区
+               * @param[in] {position} 当前数据包在于固件位置
+               * @param[in] {length} 当前固件包长度(固件包长度为0时,表示固件包发送完成)
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              unsigned char mcu_firm_update_handle(const unsigned char value[],unsigned long position,unsigned short len
+             -gth)
+              {
+                  #error "请自行完成MCU固件升级代码,完成后请删除该行"
+                  if(length == 0) {
+                      //固件数据发送完成
+                    
+                  }else {
+                      //固件数据处理
+                    
+                  }
+                  
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 16  
+
+                  return SUCCESS;
+              }
+              #endif
+ 920          
+ 921          #ifdef SUPPORT_GREEN_TIME
+              /**
+               * @brief  获取到的格林时间
+               * @param[in] {time} 获取到的格林时间数据
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void mcu_get_greentime(unsigned char time[])
+              {
+                  #error "请自行完成相关代码,并删除该行"
+                  /*
+                  time[0] 为是否获取时间成功标志，为 0 表示失败，为 1表示成功
+                  time[1] 为年份，0x00 表示 2000 年
+                  time[2] 为月份，从 1 开始到12 结束
+                  time[3] 为日期，从 1 开始到31 结束
+                  time[4] 为时钟，从 0 开始到23 结束
+                  time[5] 为分钟，从 0 开始到59 结束
+                  time[6] 为秒钟，从 0 开始到59 结束
+                  */
+                  if(time[0] == 1) {
+                      //正确接收到wifi模块返回的格林数据
+                      
+                  }else {
+                      //获取格林时间出错,有可能是当前wifi模块未联网
+                  }
+              }
+              #endif
+ 948          
+ 949          #ifdef SUPPORT_MCU_RTC_CHECK
+              /**
+               * @brief  MCU校对本地RTC时钟
+               * @param[in] {time} 获取到的格林时间数据
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void mcu_write_rtctime(unsigned char time[])
+              {
+                  #error "请自行完成RTC时钟写入代码,并删除该行"
+                  /*
+                  Time[0] 为是否获取时间成功标志，为 0 表示失败，为 1表示成功
+                  Time[1] 为年份，0x00 表示 2000 年
+                  Time[2] 为月份，从 1 开始到12 结束
+                  Time[3] 为日期，从 1 开始到31 结束
+                  Time[4] 为时钟，从 0 开始到23 结束
+                  Time[5] 为分钟，从 0 开始到59 结束
+                  Time[6] 为秒钟，从 0 开始到59 结束
+                  Time[7] 为星期，从 1 开始到 7 结束，1代表星期一
+                 */
+                  if(time[0] == 1) {
+                      //正确接收到wifi模块返回的本地时钟数据
+                   
+                  }else {
+                      //获取本地时钟数据出错,有可能是当前wifi模块未联网
+                  }
+              }
+              #endif
+ 977          
+ 978          #ifdef WIFI_TEST_ENABLE
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 17  
+
+ 979          /**
+ 980           * @brief  wifi功能测试反馈
+ 981           * @param[in] {result} wifi功能测试结果
+ 982           * @ref       0: 失败
+ 983           * @ref       1: 成功
+ 984           * @param[in] {rssi} 测试成功表示wifi信号强度/测试失败表示错误类型
+ 985           * @return Null
+ 986           * @note   MCU需要自行实现该功能
+ 987           */
+ 988          void wifi_test_result(unsigned char result,unsigned char rssi)
+ 989          {
+ 990   1          //#error "请自行实现wifi功能测试成功/失败代码,完成后请删除该行"
+ 991   1          if(result == 0) {
+ 992   2              //测试失败
+ 993   2              if(rssi == 0x00) {
+ 994   3                  //未扫描到名称为tuya_mdev_test路由器,请检查
+ 995   3              }else if(rssi == 0x01) {
+ 996   3                  //模块未授权
+ 997   3              }
+ 998   2          }else {
+ 999   2              //测试成功
+1000   2              //rssi为信号强度(0-100, 0信号最差，100信号最强)
+1001   2          }
+1002   1      }
+1003          #endif
+1004          
+1005          #ifdef WEATHER_ENABLE
+              /**
+              * @brief  mcu打开天气服务
+               * @param  Null
+               * @return Null
+               */
+              void mcu_open_weather(void)
+              {
+                  int i = 0;
+                  char buffer[13] = {0};
+                  unsigned char weather_len = 0;
+                  unsigned short send_len = 0;
+                  
+                  weather_len = sizeof(weather_choose) / sizeof(weather_choose[0]);
+                    
+                  for(i=0;i<weather_len;i++) {
+                      buffer[0] = sprintf(buffer+1,"w.%s",weather_choose[i]);
+                      send_len = set_wifi_uart_buffer(send_len, (unsigned char *)buffer, buffer[0]+1);
+                  }
+                  
+                  #error "请根据提示，自行完善打开天气服务代码，完成后请删除该行"
+                  /*
+                  //当获取的参数有和时间有关的参数时(如:日出日落)，需要搭配t.unix或者t.local
+             -使用，需要获取的参数数据是按照格林时间还是本地时间
+                  buffer[0] = sprintf(buffer+1,"t.unix"); //格林时间   或使用  buffer[0] = sprintf(buffer+1,"t.lo
+             -cal"); //本地时间
+                  send_len = set_wifi_uart_buffer(send_len, (unsigned char *)buffer, buffer[0]+1);
+                  */
+                  
+                  buffer[0] = sprintf(buffer+1,"w.date.%d",WEATHER_FORECAST_DAYS_NUM);
+                  send_len = set_wifi_uart_buffer(send_len, (unsigned char *)buffer, buffer[0]+1);
+                  
+                  wifi_uart_write_frame(WEATHER_OPEN_CMD, MCU_TX_VER, send_len);
+              }
+              
+              /**
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 18  
+
+               * @brief  打开天气功能返回用户自处理函数
+               * @param[in] {res} 打开天气功能返回结果
+               * @ref       0: 失败
+               * @ref       1: 成功
+               * @param[in] {err} 错误码
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void weather_open_return_handle(unsigned char res, unsigned char err)
+              {
+                  #error "请自行完成打开天气功能返回数据处理代码,完成后请删除该行"
+                  unsigned char err_num = 0;
+                  
+                  if(res == 1) {
+                      //打开天气返回成功
+                  }else if(res == 0) {
+                      //打开天气返回失败
+                      //获取错误码
+                      err_num = err; 
+                  }
+              }
+              
+              /**
+               * @brief  天气数据用户自处理函数
+               * @param[in] {name} 参数名
+               * @param[in] {type} 参数类型
+               * @ref       0: int 型
+               * @ref       1: string 型
+               * @param[in] {data} 参数值的地址
+               * @param[in] {day} 哪一天的天气  0:表示当天 取值范围: 0~6
+               * @ref       0: 今天
+               * @ref       1: 明天
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void weather_data_user_handle(char *name, unsigned char type, const unsigned char *data, char day)
+              {
+                  #error "这里仅给出示例，请自行完善天气数据处理代码,完成后请删除该行"
+                  int value_int;
+                  char value_string[50];//由于有的参数内容较多，这里默认为50。您可以根据定义的�
+             -��数，可以适当减少该值
+                  
+                  my_memset(value_string, '\0', 50);
+                  
+                  //首先获取数据类型
+                  if(type == 0) { //参数是INT型
+                      value_int = data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3];
+                  }else if(type == 1) {
+                      my_strcpy(value_string, data);
+                  }
+                  
+                  //注意要根据所选参数类型来获得参数值！！！
+                  if(my_strcmp(name, "temp") == 0) {
+                      printf("day:%d temp value is:%d\r\n", day, value_int);          //int 型
+                  }else if(my_strcmp(name, "humidity") == 0) {
+                      printf("day:%d humidity value is:%d\r\n", day, value_int);      //int 型
+                  }else if(my_strcmp(name, "pm25") == 0) {
+                      printf("day:%d pm25 value is:%d\r\n", day, value_int);          //int 型
+                  }else if(my_strcmp(name, "condition") == 0) {
+                      printf("day:%d condition value is:%s\r\n", day, value_string);  //string 型
+                  }
+              }
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 19  
+
+              #endif
+1101          
+1102          #ifdef MCU_DP_UPLOAD_SYN
+              /**
+               * @brief  状态同步上报结果
+               * @param[in] {result} 结果
+               * @ref       0: 失败
+               * @ref       1: 成功
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void get_upload_syn_result(unsigned char result)
+              {
+                  #error "请自行完成状态同步上报结果代码,并删除该行"
+                    
+                  if(result == 0) {
+                      //同步上报出错
+                  }else {
+                      //同步上报成功
+                  }
+              }
+              #endif
+1122          
+1123          #ifdef GET_WIFI_STATUS_ENABLE
+              /**
+               * @brief  获取 WIFI 状态结果
+               * @param[in] {result} 指示 WIFI 工作状态
+               * @ref       0x00: wifi状态 1 smartconfig 配置状态
+               * @ref       0x01: wifi状态 2 AP 配置状态
+               * @ref       0x02: wifi状态 3 WIFI 已配置但未连上路由器
+               * @ref       0x03: wifi状态 4 WIFI 已配置且连上路由器
+               * @ref       0x04: wifi状态 5 已连上路由器且连接到云端
+               * @ref       0x05: wifi状态 6 WIFI 设备处于低功耗模式
+               * @ref       0x06: wifi状态 7 WIFI 设备处于smartconfig&AP配置状态
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void get_wifi_status(unsigned char result)
+              {
+                #error "请自行完成获取 WIFI 状态结果代码,并删除该行"
+               
+                  switch(result) {
+                      case 0:
+                          //wifi工作状态1
+                      break;
+                  
+                      case 1:
+                          //wifi工作状态2
+                      break;
+                      
+                      case 2:
+                          //wifi工作状态3
+                      break;
+                      
+                      case 3:
+                          //wifi工作状态4
+                      break;
+                      
+                      case 4:
+                          //wifi工作状态5
+                      break;
+                      
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 20  
+
+                      case 5:
+                          //wifi工作状态6
+                      break;
+                    
+                      case 6:
+                          //wifi工作状态7
+                      break;
+                      
+                      default:break;
+                  }
+              }
+              #endif
+1174          
+1175          #ifdef WIFI_STREAM_ENABLE
+              /**
+               * @brief  流服务发送结果
+               * @param[in] {result} 结果
+               * @ref       0x00: 成功
+               * @ref       0x01: 流服务功能未开启
+               * @ref       0x02: 流服务器未连接成功
+               * @ref       0x03: 数据推送超时
+               * @ref       0x04: 传输的数据长度错误
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void stream_trans_send_result(unsigned char result)
+              {
+                  #error "这里仅给出示例，请自行完善流服务发送结果处理代码,完成后请删除该
+             -行"
+                  switch(result) {
+                      case 0x00:
+                          //成功
+                      break;
+                      
+                      case 0x01:
+                          //流服务功能未开启
+                      break;
+                      
+                      case 0x02:
+                          //流服务器未连接成功
+                      break;
+                      
+                      case 0x03:
+                          //数据推送超时
+                      break;
+                      
+                      case 0x04:
+                          //传输的数据长度错误
+                      break;
+                      
+                      default:break;
+                  }
+              }
+              
+              /**
+               * @brief  多地图流服务发送结果
+               * @param[in] {result} 结果
+               * @ref       0x00: 成功
+               * @ref       0x01: 失败
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 21  
+
+              void maps_stream_trans_send_result(unsigned char result)
+              {
+                  #error "这里仅给出示例，请自行完善多地图流服务发送结果处理代码,完成后请
+             -删除该行"
+                  switch(result) {
+                      case 0x00:
+                          //成功
+                      break;
+                      
+                      case 0x01:
+                          //失败
+                      break;
+                      
+                      default:break;
+                  }
+              }
+              #endif
+1239          
+1240          #ifdef WIFI_CONNECT_TEST_ENABLE
+              /**
+               * @brief  路由信息接收结果通知
+               * @param[in] {result} 模块是否成功接收到正确的路由信息
+               * @ref       0x00: 失败
+               * @ref       0x01: 成功
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void wifi_connect_test_result(unsigned char result)
+              {
+                  #error "请自行实现wifi功能测试成功/失败代码,完成后请删除该行"
+                  if(result == 0) {
+                      //路由信息接收失败，请检查发出的路由信息包是否是完整的JSON数据包
+                  }else {
+                      //路由信息接收成功，产测结果请注意WIFI_STATE_CMD指令的wifi工作状态
+                  }
+              }
+              #endif
+1259          
+1260          #ifdef GET_MODULE_MAC_ENABLE
+              /**
+               * @brief  获取模块mac结果
+               * @param[in] {mac} 模块 MAC 数据
+               * @ref       mac[0]: 为是否获取mac成功标志，0x00 表示成功，0x01 表示失败
+               * @ref       mac[1]~mac[6]: 当获取 MAC地址标志位如果mac[0]为成功，则表示模块有效的M
+             -AC地址
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void mcu_get_mac(unsigned char mac[])
+              {
+                  #error "请自行完成mac获取代码,并删除该行"
+                  /*
+                  mac[0]为是否获取mac成功标志，0x00 表示成功，为0x01表示失败
+                  mac[1]~mac[6]:当获取 MAC地址标志位如果mac[0]为成功，则表示模块有效的MAC地址
+                 */
+                 
+                  if(mac[0] == 1) {
+                      //获取mac出错
+                  }else {
+                      //正确接收到wifi模块返回的mac地址
+                  }
+              }
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 22  
+
+              #endif
+1284          
+1285          #ifdef GET_IR_STATUS_ENABLE
+              /**
+               * @brief  获取红外状态结果
+               * @param[in] {result} 指示红外状态
+               * @ref       0x00: 红外状态 1 正在发送红外码
+               * @ref       0x01: 红外状态 2 发送红外码结束
+               * @ref       0x02: 红外状态 3 红外学习开始
+               * @ref       0x03: 红外状态 4 红外学习结束
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void get_ir_status(unsigned char result)
+              {
+                  #error "请自行完成红外状态代码,并删除该行"
+                  switch(result) {
+                      case 0:
+                          //红外状态 1
+                      break;
+                    
+                      case 1:
+                          //红外状态 2
+                      break;
+                        
+                      case 2:
+                          //红外状态 3
+                      break;
+                        
+                      case 3:
+                          //红外状态 4
+                      break;
+                        
+                      default:break;
+                  }
+                  
+                  wifi_uart_write_frame(GET_IR_STATUS_CMD, MCU_TX_VER, 0);
+              }
+              #endif
+1322          
+1323          #ifdef IR_TX_RX_TEST_ENABLE
+              /**
+               * @brief  红外进入收发产测结果通知
+               * @param[in] {result} 模块是否成功接收到正确的信息
+               * @ref       0x00: 失败
+               * @ref       0x01: 成功
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void ir_tx_rx_test_result(unsigned char result)
+              {
+                  #error "请自行实现红外进入收发产测功能测试成功/失败代码,完成后请删除该�
+             -�"
+                  if(result == 0) {
+                      //红外进入收发产测成功
+                  }else {
+                      //红外进入收发产测失败，请检查发出的数据包
+                  }
+              }
+              #endif
+1342          
+1343          #ifdef FILE_DOWNLOAD_ENABLE
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 23  
+
+              /**
+               * @brief  文件下载包大小选择
+               * @param[in] {package_sz} 文件下载包大小
+               * @ref       0x00: 256 byte (默认)
+               * @ref       0x01: 512 byte
+               * @ref       0x02: 1024 byte
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void file_download_package_choose(unsigned char package_sz)
+              {
+                  #error "请自行实现请自行实现文件下载包大小选择代码,完成后请删除该行"
+                  unsigned short send_len = 0;
+                  send_len = set_wifi_uart_byte(send_len, package_sz);
+                  wifi_uart_write_frame(FILE_DOWNLOAD_START_CMD, MCU_TX_VER, send_len);
+              }
+              
+              /**
+               * @brief  文件包下载模式
+               * @param[in] {value} 数据缓冲区
+               * @param[in] {position} 当前数据包在于文件位置
+               * @param[in] {length} 当前文件包长度(长度为0时,表示文件包发送完成)
+               * @return 数据处理结果
+               * -           0(ERROR): 失败
+               * -           1(SUCCESS): 成功
+               * @note   MCU需要自行实现该功能
+               */
+              unsigned char file_download_handle(const unsigned char value[],unsigned long position,unsigned short lengt
+             -h)
+              {
+                  #error "请自行完成文件包下载代码,完成后请删除该行"
+                  if(length == 0) {
+                      //文件包数据发送完成
+                      
+                  }else {
+                      //文件包数据处理
+                    
+                  }
+                  
+                  return SUCCESS;
+              }
+              #endif
+1385          
+1386          #ifdef MODULE_EXPANDING_SERVICE_ENABLE
+              /**
+               * @brief  打开模块时间服务通知结果
+               * @param[in] {value} 数据缓冲区
+               * @param[in] {length} 数据长度
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void open_module_time_serve_result(const unsigned char value[], unsigned short length)
+              {
+                  #error "请自行实现模块时间服务通知结果代码,完成后请删除该行"
+                  unsigned char sub_cmd = value[0];
+                  
+                  switch(sub_cmd) {
+                      case 0x01: { //子命令  打开模块时间服务通知
+                          if(0x02 != length) {
+                              //数据长度错误
+                              return;
+                          }
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 24  
+
+                          
+                          if(value[1] == 0) {
+                              //服务开启成功
+                          }else {
+                              //服务开启失败
+                          }
+                      }
+                      break;
+                      
+                      case 0x02: {  //子命令  模块时间服务通知
+                          if(0x09 != length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          unsigned char time_type = value[1]; //0x00:格林时间  0x01:本地时间
+                          unsigned char time_data[7];
+                          
+                          my_memcpy(time_data, value + 2, length - 2);
+                          /*
+                          Data[0]为年份, 0x00表示2000年
+                          Data[1]为月份，从1开始到12结束
+                          Data[2]为日期，从1开始到31结束
+                          Data[3]为时钟，从0开始到23结束
+                          Data[4]为分钟，从0开始到59结束
+                          Data[5]为秒钟，从0开始到15结束
+                          Data[6]为星期，从1开始到7结束，1代表星期一
+                          */
+                          
+                          //在此处添加时间数据处理代码，time_type为时间类型
+                          
+                          unsigned short send_len = 0;
+                          send_len = set_wifi_uart_byte(send_len,sub_cmd);
+                          wifi_uart_write_frame(MODULE_EXTEND_FUN_CMD, MCU_TX_VER, send_len);
+                      }
+                      break;
+                      
+                      case 0x03: {  //子命令  主动请求天气服务数据
+                          if(0x02 != length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          if(value[1] == 0) {
+                              //成功
+                          }else {
+                              //失败
+                          }
+                      }
+                      break;
+                      
+                      case 0x04: {  //子命令  打开模块重置状态通知
+                          if(0x02 != length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          if(value[1] == 0) {
+                              //成功
+                          }else {
+                              //失败
+                          }
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 25  
+
+                      }
+                      break;
+                      
+                      case 0x05: {  //子命令  模块重置状态通知
+                          if(0x02 != length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          switch(value[1]) {
+                              case 0x00:
+                                  //模块本地重置
+                                  
+                              break;
+                              case 0x01:
+                                  //APP远程重置
+                                  
+                              break;
+                              case 0x02:
+                                  //APP恢复出厂重置
+                                  
+                              break;
+                              default:break;
+                          }
+                          
+                          unsigned short send_len = 0;
+                          send_len = set_wifi_uart_byte(send_len, sub_cmd);
+                          wifi_uart_write_frame(MODULE_EXTEND_FUN_CMD, MCU_TX_VER, send_len);
+                      }
+                      break;
+                      
+                      default:break;
+                  }
+              }
+              #endif
+1502          
+1503          #ifdef BLE_RELATED_FUNCTION_ENABLE
+              /**
+               * @brief  蓝牙功能性测试结果
+               * @param[in] {value} 数据缓冲区
+               * @param[in] {length} 数据长度
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void BLE_test_result(const unsigned char value[], unsigned short length)
+              {
+                  #error "请自行实现蓝牙功能性测试结果代码,完成后请删除该行"
+                  unsigned char sub_cmd = value[0];
+                  
+                  if(0x03 != length) {
+                      //数据长度错误
+                      return;
+                  }
+                  
+                  if(0x01 != sub_cmd) {
+                      //子命令错误
+                      return;
+                  }
+                  
+                  unsigned char result = value[1];
+                  unsigned char rssi = value[2];
+                      
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 26  
+
+                  if(result == 0) {
+                      //测试失败
+                      if(rssi == 0x00) {
+                          //未扫描到名称为 ty_mdev蓝牙信标,请检查
+                      }else if(rssi == 0x01) {
+                          //模块未授权
+                      }
+                  }else if(result == 0x01) {
+                      //测试成功
+                      //rssi为信号强度(0-100, 0信号最差，100信号最强)
+                  }
+              }
+              #endif
+1542          
+1543          #ifdef VOICE_MODULE_PROTOCOL_ENABLE
+              /**
+               * @brief  获取语音状态码结果
+               * @param[in] {result} 语音状态码
+               * @ref       0x00: 空闲
+               * @ref       0x01: mic静音状态
+               * @ref       0x02: 唤醒
+               * @ref       0x03: 正在录音
+               * @ref       0x04: 正在识别
+               * @ref       0x05: 识别成功
+               * @ref       0x06: 识别失败
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void get_voice_state_result(unsigned char result)
+              {
+                  #error "请自行实现获取语音状态码结果处理代码,完成后请删除该行"
+                  switch(result) {
+                      case 0:
+                          //空闲
+                      break;
+                  
+                      case 1:
+                          //mic静音状态
+                      break;
+                      
+                      case 2:
+                          //唤醒
+                      break;
+                      
+                      case 3:
+                          //正在录音
+                      break;
+                      
+                      case 4:
+                          //正在识别
+                      break;
+                  
+                      case 5:
+                          //识别成功
+                      break;
+                      
+                      case 6:
+                          //识别失败
+                      break;
+                      
+                    default:break;
+                  }
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 27  
+
+              }
+              
+              /**
+               * @brief  MIC静音设置结果
+               * @param[in] {result} 语音状态码
+               * @ref       0x00: mic 开启
+               * @ref       0x01: mic 静音
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void set_voice_MIC_silence_result(unsigned char result)
+              {
+                  #error "请自行实现MIC静音设置处理代码,完成后请删除该行"
+                  if(result == 0) {
+                      //mic 开启
+                  }else {
+                      //mic 静音
+                  }
+              }
+              
+              /**
+               * @brief  speaker音量设置结果
+               * @param[in] {result} 音量值
+               * @ref       0~10: 音量范围
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void set_speaker_voice_result(unsigned char result)
+              {
+                  #error "请自行实现speaker音量设置结果处理代码,完成后请删除该行"
+                  
+              }
+              
+              /**
+               * @brief  音频产测结果
+               * @param[in] {result} 音频产测状态
+               * @ref       0x00: 关闭音频产测
+               * @ref       0x01: mic1音频环路测试
+               * @ref       0x02: mic2音频环路测试
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void voice_test_result(unsigned char result)
+              {
+                  #error "请自行实现音频产测结果处理代码,完成后请删除该行"
+                  if(result == 0x00) {
+                      //关闭音频产测
+                  }else if(result == 0x01) {
+                      //mic1音频环路测试
+                  }else if(result == 0x02) {
+                      //mic2音频环路测试
+                  }
+              }
+              
+              /**
+               * @brief  唤醒产测结果
+               * @param[in] {result} 唤醒返回值
+               * @ref       0x00: 唤醒成功
+               * @ref       0x01: 唤醒失败(10s超时失败)
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 28  
+
+              void voice_awaken_test_result(unsigned char result)
+              {
+                  #error "请自行实现唤醒产测结果处理代码,完成后请删除该行"
+                  if(result == 0x00) {
+                      //唤醒成功
+                  }else if(result == 0x01) {
+                      //唤醒失败
+                  }
+              }
+              
+              /**
+               * @brief  语音模组扩展功能
+               * @param[in] {value} 数据缓冲区
+               * @param[in] {length} 数据长度
+               * @return Null
+               * @note   MCU需要自行实现该功能
+               */
+              void voice_module_extend_fun(const unsigned char value[], unsigned short length)
+              {
+                  unsigned char sub_cmd = value[0];
+                  unsigned char play;
+                  unsigned char bt_play;
+                  unsigned short send_len = 0;
+                
+                  switch(sub_cmd) {
+                      case 0x00: { //子命令  MCU功能设置
+                          if(0x02 != length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          if(value[1] == 0) {
+                              //成功
+                          }else {
+                              //失败
+                          }
+                      }
+                      break;
+                      
+                      case 0x01: {  //子命令  状态通知
+                          if(0x02 > length) {
+                              //数据长度错误
+                              return;
+                          }
+                          
+                          unsigned char play = 0xff;
+                          unsigned char bt_play = 0xff;
+                          
+                          const char *str_buff = (const char *)&value[1];
+                          const char *str_result = NULL;
+                          
+                          str_result = strstr(str_buff,"play") + my_strlen("play") + 2;
+                          if(NULL == str_result) {
+                              //数据错误
+                              goto ERR_EXTI;
+                          }
+                          
+                          if(0 == memcmp(str_result, "true", my_strlen("true"))) {
+                              play = 1;
+                          }else if(0 == memcmp(str_result, "false", my_strlen("false"))) {
+                              play = 0;
+                          }else {
+C51 COMPILER V9.52.0.0   PROTOCOL                                                          10/21/2020 10:49:10 PAGE 29  
+
+                              //数据错误
+                              goto ERR_EXTI;
+                          }
+                          
+                          str_result = strstr(str_buff,"bt_play") + my_strlen("bt_play") + 2;
+                          if(NULL == str_result) {
+                              //数据错误
+                              goto ERR_EXTI;
+                          }
+                          
+                          if(0 == memcmp(str_result, "true", my_strlen("true"))) {
+                              bt_play = 1;
+                          }else if(0 == memcmp(str_result, "false", my_strlen("false"))) {
+                              bt_play = 0;
+                          }else {
+                              //数据错误
+                              goto ERR_EXTI;
+                          }
+                          
+                          #error "请自行实现语音模组状态通知处理代码,完成后请删除该行"
+                          //MCU设置暂仅支持”播放/暂停” ”蓝牙开关”
+                          //play    播放/暂停功能  1(播放) / 0(暂停)
+                          //bt_play 蓝牙开关功能   1(开)   / 0(关)
+                          
+                          
+                          
+                          send_len = 0;
+                          send_len = set_wifi_uart_byte(send_len, sub_cmd);
+                          send_len = set_wifi_uart_byte(send_len, 0x00);
+                          wifi_uart_write_frame(MODULE_EXTEND_FUN_CMD, MCU_TX_VER, send_len);
+                      }
+                      break;
+              
+                      default:break;
+                  }
+                  
+                  return;
+              
+              ERR_EXTI:
+                  send_len = 0;
+                  send_len = set_wifi_uart_byte(send_len, sub_cmd);
+                  send_len = set_wifi_uart_byte(send_len, 0x01);
+                  wifi_uart_write_frame(MODULE_EXTEND_FUN_CMD, MCU_TX_VER, send_len);
+                  return;
+              }
+              #endif
+1761          
+1762          
+1763          
+1764          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1142    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     23    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      7      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
