@@ -1,761 +1,862 @@
-/**********************************Copyright (c)**********************************
-**                       版权所有 (C), 2015-2020, 涂鸦科技
+/****************************************Copyright (c)*************************
+**                               版权所有 (C), 2015-2020, 涂鸦科技
 **
-**                             http://www.tuya.com
+**                                 http://www.tuya.com
 **
-*********************************************************************************/
-/**
- * @file    system.c
- * @author  涂鸦综合协议开发组
- * @version v2.5.5
- * @date    2020.6.1
- * @brief   串口数据处理，用户无需关心该文件实现内容
- */
- 
-
+**--------------文件信息-------------------------------------------------------*/
 #define SYSTEM_GLOBAL
-
-#include "wifi.h"
 #include "HC89S003F4.h"
+#include "zigbee.h"
+
 
 void savevar(void);
 extern const DOWNLOAD_CMD_S xdata download_cmd[];
 
 
+static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 
-/**
- * @brief  写wifi_uart字节
- * @param[in] {dest} 缓存区其实地址
- * @param[in] {byte} 写入字节值
- * @return 写入完成后的总长度
- */
-unsigned short set_wifi_uart_byte(unsigned short dest, unsigned char byte)
+
+#ifdef SUPPORT_MCU_FIRM_UPDATE
+     unsigned char x=0;
+     unsigned char update_mcu_status=1;
+	 unsigned char PID[8];
+	 unsigned char DATA[64];
+	 unsigned int IMAGE_OFFSET=0;
+#endif
+
+static volatile unsigned short xdata global_seq_num;
+/*****************************************************************************
+函数名称 : seq_num_set
+功能描述 : 设置序列号
+输入参数 : seq_num：序列号
+返回参数 : 写入完成后的总长度
+*****************************************************************************/
+static void seq_num_set(unsigned short seq_num)
 {
-    unsigned char *obj = (unsigned char *)wifi_uart_tx_buf + DATA_START + dest;
-    
-    *obj = byte;
-    dest += 1;
-    
-    return dest;
+    global_seq_num = seq_num;
+}
+/*****************************************************************************
+函数名称 : seq_num_get
+功能描述 : 获取序列号
+输入参数 : 无
+返回参数 : 序列号
+*****************************************************************************/
+static unsigned short seq_num_get(void)
+{
+    return global_seq_num;
+}
+/*****************************************************************************
+函数名称 : set_zigbee_uart_byte
+功能描述 : 写zigbee_uart字节
+输入参数 : dest:缓存区其实地址;
+           byte:写入字节值
+返回参数 : 写入完成后的总长度
+*****************************************************************************/
+unsigned short set_zigbee_uart_byte(unsigned short dest, unsigned char byte)
+{
+  unsigned char *obj = (unsigned char *)zigbee_uart_tx_buf + DATA_START + dest;
+  
+  *obj = byte;
+  dest += 1;
+  
+  return dest;
 }
 
-/**
- * @brief  写wifi_uart_buffer
- * @param[in] {dest} 目标地址
- * @param[in] {src} 源地址
- * @param[in] {len} 数据长度
- * @return 写入结束的缓存地址
- */
-unsigned short set_wifi_uart_buffer(unsigned short dest, const unsigned char *src, unsigned short len)
+/*****************************************************************************
+函数名称 : set_zigbee_uart_buffer
+功能描述 : 写zigbee_uart_buffer
+输入参数 : dest:目标地址
+           src:源地址
+           len:数据长度
+返回参数 : 无
+*****************************************************************************/
+unsigned short set_zigbee_uart_buffer(unsigned short dest, unsigned char *src, unsigned short len)
 {
-    unsigned char *obj = (unsigned char *)wifi_uart_tx_buf + DATA_START + dest;
-    
-    my_memcpy(obj,src,len);
-    
-    dest += len;
-    return dest;
+  unsigned char *obj = (unsigned char *)zigbee_uart_tx_buf + DATA_START + dest;
+  
+  my_memcpy(obj,src,len);
+  
+  dest += len;
+  return dest;
 }
 
-/**
- * @brief  计算校验和
- * @param[in] {pack} 数据源指针
- * @param[in] {pack_len} 计算校验和长度
- * @return 校验和
- */
+/*****************************************************************************
+函数名称 : zigbee_uart_write_data
+功能描述 : 向zigbee uart写入连续数据
+输入参数 : in:发送缓存指针
+           len:数据发送长度
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_uart_write_data(unsigned char *in, unsigned short len)
+{
+  if((NULL == in) || (0 == len))
+  {
+    return;
+  }
+  
+  while(len --)
+  {
+    uart_transmit_output(*in);
+    in ++;
+  }
+}
+
+/*****************************************************************************
+函数名称 : get_check_sum
+功能描述 : 计算校验和
+输入参数 : pack:数据源指针
+           pack_len:计算校验和长度
+返回参数 : 校验和
+*****************************************************************************/
 unsigned char get_check_sum(unsigned char *pack, unsigned short pack_len)
 {
-    unsigned short i;
-    unsigned char check_sum = 0;
-    
-    for(i = 0; i < pack_len; i ++) {
-        check_sum += *pack ++;
-    }
-    
-    return check_sum;
-}
-
-/**
- * @brief  串口发送一段数据
- * @param[in] {in} 发送缓存指针
- * @param[in] {len} 数据发送长度
- * @return Null
- */
-static void wifi_uart_write_data(unsigned char *in, unsigned short len)
-{
-  if((NULL == in) || (0 == len)) {
-      return;
+  unsigned short i;
+  unsigned char check_sum = 0;
+  
+  for(i = 0; i < pack_len; i ++)
+  {
+    check_sum += *pack ++;
   }
   
-  while(len --) {
-      uart_transmit_output(*in);
-      in ++;
-  }
+  return check_sum;
 }
 
-/**
- * @brief  向wifi串口发送一帧数据
- * @param[in] {fr_type} 帧类型
- * @param[in] {fr_ver} 帧版本
- * @param[in] {len} 数据长度
- * @return Null
- */
-void wifi_uart_write_frame(unsigned char fr_type, unsigned char fr_ver, unsigned short len)
+/*****************************************************************************
+函数名称 : zigbee_uart_write_frame
+功能描述 : 向zigbee串口发送一帧数据
+输入参数 : fr_type:帧类型
+           len:数据长度
+返回参数 : 无
+*****************************************************************************/
+void zigbee_uart_write_frame(unsigned char fr_type, unsigned short len)
 {
-    unsigned char check_sum = 0;
-    
-    wifi_uart_tx_buf[HEAD_FIRST] = 0x55;
-    wifi_uart_tx_buf[HEAD_SECOND] = 0xaa;
-    wifi_uart_tx_buf[PROTOCOL_VERSION] = fr_ver;
-    wifi_uart_tx_buf[FRAME_TYPE] = fr_type;
-    wifi_uart_tx_buf[LENGTH_HIGH] = len >> 8;
-    wifi_uart_tx_buf[LENGTH_LOW] = len & 0xff;
-    
-    len += PROTOCOL_HEAD;
-    check_sum = get_check_sum((unsigned char *)wifi_uart_tx_buf, len - 1);
-    wifi_uart_tx_buf[len - 1] = check_sum;
-    
-    wifi_uart_write_data((unsigned char *)wifi_uart_tx_buf, len);
-}
-
-/**
- * @brief  心跳包检测
- * @param  Null
- * @return Null
- */
-static void heat_beat_check(void)
-{
-    unsigned char length = 0;
-    static unsigned char mcu_reset_state = FALSE;
-    
-    if(FALSE == mcu_reset_state) {
-        length = set_wifi_uart_byte(length, FALSE);
-        mcu_reset_state = TRUE;
-    }else {
-        length = set_wifi_uart_byte(length, TRUE);
-    }
-    
-    wifi_uart_write_frame(HEAT_BEAT_CMD, MCU_TX_VER, length);
-}
-
-/**
- * @brief  产品信息上传
- * @param  Null
- * @return Null
- */
-static void product_info_update(void)
-{
-    unsigned char length = 0;
-    unsigned char str[10] = {0};
-    
-    length = set_wifi_uart_buffer(length, "{\"p\":\"", my_strlen("{\"p\":\""));
-    length = set_wifi_uart_buffer(length,(unsigned char *)PRODUCT_KEY,my_strlen((unsigned char *)PRODUCT_KEY));
-    length = set_wifi_uart_buffer(length, "\",\"v\":\"", my_strlen("\",\"v\":\""));
-    length = set_wifi_uart_buffer(length,(unsigned char *)MCU_VER,my_strlen((unsigned char *)MCU_VER));
-    length = set_wifi_uart_buffer(length, "\",\"m\":", my_strlen("\",\"m\":"));
-    length = set_wifi_uart_buffer(length, (unsigned char *)CONFIG_MODE, my_strlen((unsigned char *)CONFIG_MODE));
-#ifdef CONFIG_MODE_DELAY_TIME
-    sprintf((char *)str,",\"mt\":%d",CONFIG_MODE_DELAY_TIME);
-    length = set_wifi_uart_buffer(length, str, my_strlen(str));
-#endif
-#ifdef CONFIG_MODE_CHOOSE
-    sprintf((char *)str,",\"n\":%d",CONFIG_MODE_CHOOSE);
-    length = set_wifi_uart_buffer(length, str, my_strlen(str));
-#endif
-#ifdef ENABLE_MODULE_IR_FUN
-    sprintf((char *)str,",\"ir\":\"%d.%d\"",MODULE_IR_PIN_TX,MODULE_IR_PIN_RX);
-    length = set_wifi_uart_buffer(length, str, my_strlen(str));
-#endif
-#ifdef LONG_CONN_LOWPOWER
-    sprintf((char *)str,",\"low\":%d",LONG_CONN_LOWPOWER);
-    length = set_wifi_uart_buffer(length, str, my_strlen(str));
-#endif
+  unsigned char check_sum = 0;
+  unsigned short seq_num = seq_num_get();
   
-    length = set_wifi_uart_buffer(length, "}", my_strlen("}"));
-    
-    wifi_uart_write_frame(PRODUCT_INFO_CMD, MCU_TX_VER, length);
+  zigbee_uart_tx_buf[HEAD_FIRST] = 0x55;
+  zigbee_uart_tx_buf[HEAD_SECOND] = 0xaa;
+  zigbee_uart_tx_buf[PROTOCOL_VERSION] = SERIAL_PROTOCOL_VER;
+  zigbee_uart_tx_buf[SEQ_HIGH] = seq_num >> 8 ;
+  zigbee_uart_tx_buf[SEQ_LOW] = seq_num & 0xff;
+  zigbee_uart_tx_buf[FRAME_TYPE] = fr_type;
+  zigbee_uart_tx_buf[LENGTH_HIGH] = len >> 8;
+  zigbee_uart_tx_buf[LENGTH_LOW] = len & 0xff;
+
+  seq_num++;
+  seq_num_set(seq_num);
+  len += PROTOCOL_HEAD ;
+  check_sum = get_check_sum((unsigned char *)zigbee_uart_tx_buf, len - 1);
+  zigbee_uart_tx_buf[len - 1] = check_sum;
+
+  zigbee_uart_write_data((unsigned char *)zigbee_uart_tx_buf, len);
 }
 
-/**
- * @brief  mcu查询mcu和wifi的工作模式
- * @param  Null
- * @return Null
- */
-static void get_mcu_wifi_mode(void)
-{
-    unsigned char length = 0;
-    
-#ifdef WIFI_CONTROL_SELF_MODE                                   //模块自处理
-    length = set_wifi_uart_byte(length, WF_STATE_KEY);
-    length = set_wifi_uart_byte(length, WF_RESERT_KEY);
-#else                                                           
-    //No need to process data
-#endif
-    
-    wifi_uart_write_frame(WORK_MODE_CMD, MCU_TX_VER, length);
-}
-
-/**
- * @brief  获取制定DPID在数组中的序号
- * @param[in] {dpid} dpid
- * @return dp序号
- */
+/*****************************************************************************
+函数名称 : get_update_dpid_index
+功能描述 : 获取制定DPID在数组中的序号
+输入参数 : dpid:dpid
+返回参数 : index:dp序号
+*****************************************************************************/
 static unsigned char get_dowmload_dpid_index(unsigned char dpid)
 {
-    unsigned char index;
-    unsigned char total = get_download_cmd_total();
-    
-    for(index = 0; index < total; index ++) {
-        if(download_cmd[index].dp_id == dpid) {
-            break;
-        }
-    }
-    
-    return index;
-}
-
-/**
- * @brief  下发数据处理
- * @param[in] {value} 下发数据源指针
- * @return 返回数据处理结果
- */
-static unsigned char data_point_handle(const unsigned char value[])
-{
-    unsigned char dp_id,index;
-    unsigned char dp_type;
-    unsigned char ret;
-    unsigned short dp_len;
-    
-    dp_id = value[0];
-    dp_type = value[1];
-    dp_len = value[2] * 0x100;
-    dp_len += value[3];
-    
-    index = get_dowmload_dpid_index(dp_id);
-
-    if(dp_type != download_cmd[index].dp_type) {
-        //错误提示
-        return FALSE;
-    }else {
-        ret = dp_download_handle(dp_id,value + 4,dp_len);
-    }
-    
-    return ret;
-}
-
-#ifdef WEATHER_ENABLE
-/**
- * @brief  天气数据解析
- * @param[in] {p_data} 接收数据指针
- * @param[in] {data_len} 接收数据长度
- * @return Null
- */
-static void weather_data_raw_handle(const unsigned char p_data[], unsigned short data_len)
-{
-    int i = 1;
-    int can_len = 0; 
-    char can[15] = {0};
-    char day = 0;
-    int type1 = 0;
-    unsigned char value_string[100] = {0};
-    int val_cnt = 0;
-    int val_len = 0;
-    
-    if(p_data[0] != 1 || data_len < 1) {
-        //接收失败
-    }else {
-        if(data_len < 4) {
-            //数据为空
-        }
-        
-        while (i < data_len) {
-            can_len = p_data[i];
-            
-            my_memset(can, '\0', 15);
-            my_memcpy(can, p_data + i + 1, can_len - 2);
-
-            day = p_data[i + can_len] - '0';
-
-            type1 = p_data[i + 1 + can_len];
-            if(type1 != 0 && type1 != 1) {
-                return;
-            }
-
-            my_memset(value_string, '\0', 100);
-            val_cnt = i + 1 + can_len + 1;
-            val_len = p_data[val_cnt];
-            if (type1 == 0) { //int32
-                weather_data_user_handle(can+2, type1, p_data+val_cnt+1, day);
-            }
-            else if(type1 == 1) { //string
-                my_memcpy(value_string, p_data + val_cnt + 1, val_len);
-                weather_data_user_handle(can+2, type1, value_string, day);
-            }
-
-            i += 1 + can_len + 1 + 1 + val_len;
-        }
-        
-        wifi_uart_write_frame(WEATHER_DATA_CMD, 0, 0);
-    }
-}
-#endif
-
-#ifdef WIFI_STREAM_ENABLE
-/**
- * @brief  流数据传输
- * @param[in] {id} 流服务标识
- * @param[in] {offset} 偏移量
- * @param[in] {buffer} 数据地址
- * @param[in] {buf_len} 数据长度
- * @return Null
- * @note   Null
- */
-unsigned char stream_trans(unsigned short id, unsigned int offset, unsigned char *buffer, unsigned short buf_len)
-{
-    unsigned short send_len = 0;
-
-    stream_status = 0xff;
-
-    if(stop_update_flag == ENABLE)
-        return ERROR;
-
-    //ID
-    send_len = set_wifi_uart_byte(send_len,id / 0x100);
-    send_len = set_wifi_uart_byte(send_len,id % 0x100);
-    //Offset
-    send_len = set_wifi_uart_byte(send_len,offset >> 24);
-    send_len = set_wifi_uart_byte(send_len,offset >> 16);
-    send_len = set_wifi_uart_byte(send_len,offset >> 8);
-    send_len = set_wifi_uart_byte(send_len,offset % 256);
-    //data
-    send_len = set_wifi_uart_buffer(send_len, buffer, buf_len);
-    wifi_uart_write_frame(STREAM_TRANS_CMD, MCU_TX_VER, send_len);
-    return SUCCESS;
-}
-
-/**
- * @brief  多地图流数据传输
- * @param[in] {pro_ver} 地图服务协议版本
- * @param[in] {id} 地图流服务会话ID
- * @param[in] {sub_id} 子地图ID
- * @param[in] {sub_id_pro_mode} 子地图ID数据处理方式
- * @ref           0x00:继续累加
- * @ref           0x00:清除上传的数据
- * @param[in] {offset} 偏移量
- * @param[in] {buffer} 数据地址
- * @param[in] {buf_len} 数据长度
- * @return Null
- * @note   Null
- */
-unsigned char maps_stream_trans(unsigned char pro_ver, unsigned short id, unsigned char sub_id, unsigned char sub_id_pro_mode, 
-                                unsigned int offset, unsigned char *buffer, unsigned short buf_len)
-{
-    unsigned short send_len = 0;
-
-    maps_stream_status = 0xff;
-
-    if(stop_update_flag == ENABLE)
-        return ERROR;
-
-    //地图服务协议版本
-    send_len = set_wifi_uart_byte(send_len, pro_ver);
-    
-    //地图流服务会话ID
-    send_len = set_wifi_uart_byte(send_len,id / 0x100);
-    send_len = set_wifi_uart_byte(send_len,id % 0x100);
-    
-    //子地图ID
-    send_len = set_wifi_uart_byte(send_len, sub_id);
-    
-    //子地图ID数据处理方式
-    send_len = set_wifi_uart_byte(send_len, sub_id_pro_mode);
-    
-    //偏移量
-    send_len = set_wifi_uart_byte(send_len,offset >> 24);
-    send_len = set_wifi_uart_byte(send_len,offset >> 16);
-    send_len = set_wifi_uart_byte(send_len,offset >> 8);
-    send_len = set_wifi_uart_byte(send_len,offset % 256);
-    //Data
-    send_len = set_wifi_uart_buffer(send_len, buffer, buf_len);
-    wifi_uart_write_frame(MAPS_STREAM_TRANS_CMD, MCU_TX_VER, send_len);
-    return SUCCESS;
-}
-#endif
-
-/**
- * @brief  数据帧处理
- * @param[in] {offset} 数据起始位
- * @return Null
- */
-void data_handle(unsigned short offset)
-{
-#ifdef SUPPORT_MCU_FIRM_UPDATE
-    unsigned char *firmware_addr = NULL;
-    static unsigned short firm_size;                                            //升级包一包的大小
-    static unsigned long firm_length;                                           //MCU升级文件长度
-    static unsigned char firm_update_flag = 0;                                  //MCU升级标志
-    unsigned long dp_len;
-    unsigned char firm_flag;                                                    //升级包大小标志
-#else
-    unsigned short dp_len;
-#endif
+  unsigned char index;
+  unsigned char total = get_download_cmd_total();
   
-    unsigned char ret;
-    unsigned short i,total_len;
-    unsigned char cmd_type = wifi_data_process_buf[offset + FRAME_TYPE];
-    unsigned char result;
-
-#ifdef WEATHER_ENABLE
-    static unsigned char isWoSend = 0;                                          //是否已经打开过天气数据, 0:否  1:是
-#endif
-
-#ifdef WIFI_TEST_ENABLE
-    unsigned char rssi;
-#endif
-
-#ifdef FILE_DOWNLOAD_ENABLE
-    unsigned char *file_data_addr = NULL;
-    static unsigned short file_package_size = 0;                                //文件数据包一包的大小
-    static unsigned char file_download_flag = 0;                                //文件下载标志
-    unsigned int file_download_size = 0;
-#endif
-
-    switch(cmd_type)
+  for(index = 0; index < total; index ++)
+  {
+    if(download_cmd[index].dp_id == dpid)
     {
-        case HEAT_BEAT_CMD:                                     //心跳包
-            heat_beat_check();
-        break;
-    
-        case PRODUCT_INFO_CMD:                                  //产品信息
-            product_info_update();
-        break;
-    
-        case WORK_MODE_CMD:                                     //查询MCU设定的模块工作模式
-            get_mcu_wifi_mode();
-        break;
-    
-#ifndef WIFI_CONTROL_SELF_MODE
-        case WIFI_STATE_CMD:                                    //wifi工作状态	
-            wifi_work_state = wifi_data_process_buf[offset + DATA_START];
-            wifi_uart_write_frame(WIFI_STATE_CMD, MCU_TX_VER, 0);
-#ifdef WEATHER_ENABLE
-            if(wifi_work_state == WIFI_CONNECTED && isWoSend == 0) { //当WIFI连接成功，打开天气数据且仅一次
-                mcu_open_weather();
-                isWoSend = 1;
-            }
-#endif
-        break;
-
-        case WIFI_RESET_CMD:                                    //重置wifi(wifi返回成功)
-            reset_wifi_flag = RESET_WIFI_SUCCESS;
-        break;
-    
-        case WIFI_MODE_CMD:                                     //选择smartconfig/AP模式(wifi返回成功)	
-            set_wifimode_flag = SET_WIFICONFIG_SUCCESS;
-        break;
-#endif
-    
-        case DATA_QUERT_CMD:                                    //命令下发
-            total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-    
-            for(i = 0;i < total_len; ) {
-                dp_len = wifi_data_process_buf[offset + DATA_START + i + 2] * 0x100;
-                dp_len += wifi_data_process_buf[offset + DATA_START + i + 3];
-                //
-                ret = data_point_handle((unsigned char *)wifi_data_process_buf + offset + DATA_START + i);
-      
-                if(SUCCESS == ret) {
-                    //成功提示
-                }else {
-                    //错误提示
-                }
-      
-                i += (dp_len + 4);
-            }
-        break;
-    
-        case STATE_QUERY_CMD:                                   //状态查询
-            all_data_update();                               
-        break;
-    
-#ifdef SUPPORT_MCU_FIRM_UPDATE
-        case UPDATE_START_CMD:                                  //升级开始
-            //获取升级包大小全局变量
-            firm_flag = PACKAGE_SIZE;
-            if(firm_flag == 0) {
-                firm_size = 256;
-            }else if(firm_flag == 1) {
-                firm_size = 512;
-            }else if(firm_flag == 2) { 
-                firm_size = 1024;
-            }
-
-            firm_length = wifi_data_process_buf[offset + DATA_START];
-            firm_length <<= 8;
-            firm_length |= wifi_data_process_buf[offset + DATA_START + 1];
-            firm_length <<= 8;
-            firm_length |= wifi_data_process_buf[offset + DATA_START + 2];
-            firm_length <<= 8;
-            firm_length |= wifi_data_process_buf[offset + DATA_START + 3];
-            
-            upgrade_package_choose(PACKAGE_SIZE);
-            firm_update_flag = UPDATE_START_CMD;
-        break;
-    
-        case UPDATE_TRANS_CMD:                                  //升级传输
-            if(firm_update_flag == UPDATE_START_CMD) {
-                //停止一切数据上报
-                stop_update_flag = ENABLE;
-      
-                total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-      
-                dp_len = wifi_data_process_buf[offset + DATA_START];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 1];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 2];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 3];
-      
-                firmware_addr = (unsigned char *)wifi_data_process_buf;
-                firmware_addr += (offset + DATA_START + 4);
-      
-                if((total_len == 4) && (dp_len == firm_length)) {
-                    //最后一包
-                    ret = mcu_firm_update_handle(firmware_addr,dp_len,0);
-                    firm_update_flag = 0;
-                }else if((total_len - 4) <= firm_size) {
-                    ret = mcu_firm_update_handle(firmware_addr,dp_len,total_len - 4);
-                }else {
-                    firm_update_flag = 0;
-                    ret = ERROR;
-                }
-      
-                if(ret == SUCCESS) {
-                    wifi_uart_write_frame(UPDATE_TRANS_CMD, MCU_TX_VER, 0);
-                }
-                //恢复一切数据上报
-                stop_update_flag = DISABLE;    
-            }
-        break;
-#endif      
-
-#ifdef SUPPORT_GREEN_TIME
-        case GET_ONLINE_TIME_CMD:                               //获取格林时间
-            mcu_get_greentime((unsigned char *)(wifi_data_process_buf + offset + DATA_START));
-        break;
-#endif
-
-#ifdef SUPPORT_MCU_RTC_CHECK
-        case GET_LOCAL_TIME_CMD:                               //获取本地时间
-            mcu_write_rtctime((unsigned char *)(wifi_data_process_buf + offset + DATA_START));
-        break;
-#endif
- 
-#ifdef WIFI_TEST_ENABLE
-        case WIFI_TEST_CMD:                                     //wifi功能测试（扫描指定路由）
-            result = wifi_data_process_buf[offset + DATA_START];
-            rssi = wifi_data_process_buf[offset + DATA_START + 1];
-            wifi_test_result(result, rssi);
-        break;
-#endif
-
-#ifdef WEATHER_ENABLE
-        case WEATHER_OPEN_CMD:                                  //打开天气服务返回
-            weather_open_return_handle(wifi_data_process_buf[offset + DATA_START], wifi_data_process_buf[offset + DATA_START + 1]);
-        break;
-    
-        case WEATHER_DATA_CMD:                                  //天气数据下发
-            total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-            weather_data_raw_handle((unsigned char *)wifi_data_process_buf + offset + DATA_START, total_len);
-        break;
-#endif
-
-#ifdef WIFI_STREAM_ENABLE
-        case STREAM_TRANS_CMD:                                  //流服务
-            stream_status = wifi_data_process_buf[offset + DATA_START];//流服务传输返回接收
-            stream_trans_send_result(stream_status);
-        break;
-        
-        case MAPS_STREAM_TRANS_CMD:                             //流数据传输(支持多张地图)
-            maps_stream_status = wifi_data_process_buf[offset + DATA_START];//流服务传输返回接收
-            maps_stream_trans_send_result(maps_stream_status);
-        break;
-#endif
-
-#ifdef WIFI_CONNECT_TEST_ENABLE
-        case WIFI_CONNECT_TEST_CMD:                             //wifi功能测试（连接指定路由）
-            result = wifi_data_process_buf[offset + DATA_START];
-            wifi_connect_test_result(result);
-        break;
-#endif
-
-#ifdef GET_MODULE_MAC_ENABLE
-        case GET_MAC_CMD:                                       //获取模块mac
-            mcu_get_mac((unsigned char *)(wifi_data_process_buf + offset + DATA_START));
-        break;
-#endif
-
-#ifdef GET_WIFI_STATUS_ENABLE
-        case GET_WIFI_STATUS_CMD:                               //获取当前wifi联网状态
-            result = wifi_data_process_buf[offset + DATA_START];
-            get_wifi_status(result);
-        break;
-#endif
-
-#ifdef MCU_DP_UPLOAD_SYN
-        case STATE_UPLOAD_SYN_RECV_CMD:                         //状态上报（同步）
-            result = wifi_data_process_buf[offset + DATA_START];
-            get_upload_syn_result(result);
-        break;
-#endif
-
-#ifdef GET_IR_STATUS_ENABLE
-        case GET_IR_STATUS_CMD:                                 //红外状态通知
-            result = wifi_data_process_buf[offset + DATA_START];
-            get_ir_status(result);
-        break;
-#endif
-      
-#ifdef IR_TX_RX_TEST_ENABLE
-        case IR_TX_RX_TEST_CMD:                                 //红外进入收发产测
-            result = wifi_data_process_buf[offset + DATA_START];
-            ir_tx_rx_test_result(result);
-        break;
-#endif
-        
-#ifdef FILE_DOWNLOAD_ENABLE
-        case FILE_DOWNLOAD_START_CMD:                           //文件下载启动
-            //获取文件包大小选择
-            if(FILE_DOWNLOAD_PACKAGE_SIZE == 0) {
-                file_package_size = 256;
-            }else if(FILE_DOWNLOAD_PACKAGE_SIZE == 1) {
-                file_package_size = 512;
-            }else if(FILE_DOWNLOAD_PACKAGE_SIZE == 2) { 
-                file_package_size = 1024;
-            }
-            
-            file_download_size = wifi_data_process_buf[offset + DATA_START];
-            file_download_size = (file_download_size << 8) |  wifi_data_process_buf[offset + DATA_START + 1];
-            file_download_size = (file_download_size << 8) |  wifi_data_process_buf[offset + DATA_START + 2];
-            file_download_size = (file_download_size << 8) |  wifi_data_process_buf[offset + DATA_START + 3];
-        
-            file_download_package_choose(FILE_DOWNLOAD_PACKAGE_SIZE);
-            file_download_flag = FILE_DOWNLOAD_START_CMD;
-        break;
-        
-        case FILE_DOWNLOAD_TRANS_CMD:                           //文件下载数据传输
-            if(file_download_flag == FILE_DOWNLOAD_START_CMD) {
-                total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-      
-                dp_len = wifi_data_process_buf[offset + DATA_START];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 1];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 2];
-                dp_len <<= 8;
-                dp_len |= wifi_data_process_buf[offset + DATA_START + 3];
-      
-                file_data_addr = (unsigned char *)wifi_data_process_buf;
-                file_data_addr += (offset + DATA_START + 4);
-      
-                if((total_len == 4) && (dp_len == file_download_size)) {
-                    //最后一包
-                    ret = file_download_handle(file_data_addr,dp_len,0);
-                    file_download_flag = 0;
-                }
-                else if((total_len - 4) <= file_package_size) {
-                    ret = file_download_handle(file_data_addr,dp_len,total_len - 4);
-                }else {
-                    file_download_flag = 0;
-                    ret = ERROR;
-                }
-      
-                if(ret == SUCCESS) {
-                    wifi_uart_write_frame(FILE_DOWNLOAD_TRANS_CMD, MCU_TX_VER, 0);
-                }
-            }
-        break;
-#endif
-        
-#ifdef MODULE_EXPANDING_SERVICE_ENABLE
-        case MODULE_EXTEND_FUN_CMD:                             //模块拓展服务
-            total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-            open_module_time_serve_result((unsigned char *)(wifi_data_process_buf + offset + DATA_START), total_len);
-        break;
-#endif
-
-#ifdef BLE_RELATED_FUNCTION_ENABLE
-        case BLE_TEST_CMD:                                      //蓝牙功能性测试（扫描指定蓝牙信标）
-            total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-            BLE_test_result((unsigned char *)(wifi_data_process_buf + offset + DATA_START), total_len);
-        break;
-#endif
-
-            
-#ifdef VOICE_MODULE_PROTOCOL_ENABLE
-        case GET_VOICE_STATE_CMD:                               //获取语音状态码
-            result = wifi_data_process_buf[offset + DATA_START];
-            get_voice_state_result(result);
-        break;
-        case MIC_SILENCE_CMD:                                   //MIC静音设置
-            result = wifi_data_process_buf[offset + DATA_START];
-            set_voice_MIC_silence_result(result);
-        break;
-        case SET_SPEAKER_VOLUME_CMD:                            //speaker音量设置
-            result = wifi_data_process_buf[offset + DATA_START];
-            set_speaker_voice_result(result);
-        break;
-        case VOICE_TEST_CMD:                                    //语音模组音频产测
-            result = wifi_data_process_buf[offset + DATA_START];
-            voice_test_result(result);
-        break;
-        case VOICE_AWAKEN_TEST_CMD:                             //语音模组唤醒产测
-            result = wifi_data_process_buf[offset + DATA_START];
-            voice_awaken_test_result(result);
-        break;
-        case VOICE_EXTEND_FUN_CMD:                              //语音模组扩展功能
-            total_len = (wifi_data_process_buf[offset + LENGTH_HIGH] << 8) | wifi_data_process_buf[offset + LENGTH_LOW];
-            voice_module_extend_fun((unsigned char *)(wifi_data_process_buf + offset + DATA_START), total_len);
-        break;
-#endif
-        
-
-        default:break;
+      break;
     }
+  }
+  
+  return index;
 }
 
-/**
- * @brief  判断串口接收缓存中是否有数据
- * @param  Null
- * @return 是否有数据
- */
-unsigned char with_data_rxbuff(void)
+/*****************************************************************************
+函数名称 : get_queue_total_data
+功能描述 : 读取队列内数据
+输入参数 : 无
+返回参数 : 无
+*****************************************************************************/
+unsigned short get_queue_total_data(void)
 {
-    if(rx_buf_in != rx_buf_out)
-        return 1;
-    else
-        return 0;
+    if(queue_total_data == 0)
+    {
+        zigbee_protocol_init();
+    }
+    return (queue_total_data);
 }
 
-/**
- * @brief  读取队列1字节数据
- * @param  Null
- * @return Read the data
- */
-unsigned char take_byte_rxbuff(void)
+
+
+/*****************************************************************************
+函数名称 : Queue_Read_Byte
+功能描述 : 读取队列1字节数据
+输入参数 : 无
+返回参数 : 无
+*****************************************************************************/
+unsigned char Queue_Read_Byte(void)
 {
-    unsigned char value;
-    
-    if(rx_buf_out != rx_buf_in) {
-        //有数据
-        if(rx_buf_out >= (unsigned char *)(wifi_uart_rx_buf + sizeof(wifi_uart_rx_buf))) {
-            //数据已经到末尾
-            rx_buf_out = (unsigned char *)(wifi_uart_rx_buf);
+    unsigned char value = 0;
+
+    if(queue_total_data > 0)
+    {
+        //  有数据
+        if(queue_out >= (unsigned char *)(zigbee_queue_buf + sizeof(zigbee_queue_buf)))
+        {
+            //  数据已经到末尾
+            queue_out = (unsigned char *)(zigbee_queue_buf);
         }
-        
-        value = *rx_buf_out ++;   
+        value = *queue_out++;
+    	queue_total_data--;
     }
-    
     return value;
 }
+
+/*****************************************************************************
+函数名称 : zigbee_time_convert
+功能描述 : 网络时间同步转换（UTC/local->年月日时分秒）
+输入参数 : time：UTC时间或者本地时间
+					 convert_time：转换之后的年月日时间
+返回参数 : 转换结果指针
+*****************************************************************************/
+static unsigned char* zigbee_time_convert(unsigned long time, time_t* convert_time)
+{
+    const char days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    unsigned int pass4_year = 0, hours_per_year = 0;;
+
+    if(0 == time || NULL == convert_time)
+    {
+        return NULL;
+    }
+
+    convert_time->second = time%60;
+    time /= 60;
+    convert_time->minute = time%60;
+    time /= 60;
+
+    pass4_year = time/(1461L * 24L);  /*365*4+1*/
+    convert_time->year = (pass4_year << 2) + 1970;
+
+    time %= (1461L * 24L);
+
+    for( ; ; )
+    {
+        hours_per_year = 365 * 24;
+        if((convert_time->year & 3) == 0) /*闰年多一天*/
+        {
+            hours_per_year += 24;
+        }
+
+        if(time < hours_per_year)
+        {
+            break;
+        }
+
+        convert_time->year++;
+        time -= hours_per_year;
+    }
+
+    convert_time->hour = time % 24;
+    time /= 24;
+    time++; /*假定为闰年,矫正闰年误差， 计算月份、日期*/
+    if((convert_time->year & 3) == 0 )
+    {
+        if(time > 60)
+        {
+            time --;
+        }
+        else
+        {
+            if(time == 60)
+            {
+                convert_time->month = 1;
+                convert_time->day = 29;
+                return (unsigned char*)convert_time;
+            }
+        }
+    }
+
+    /*计算月日*/
+    for(convert_time->month = 0; days[convert_time->month] <time; convert_time->month++)
+    {
+        time -= days[convert_time->month];
+    }
+    convert_time->month++;
+    convert_time->day = time;
+    return (unsigned char*)convert_time;
+}
+
+/*****************************************************************************
+函数名称 : zigbee_ota_ver_req_send
+功能描述 : OTA版本请求回复
+输入参数 : version：版本号
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_ver_req_send(unsigned char version)
+{
+    unsigned short length = 0;
+  
+    length = set_zigbee_uart_byte(length,version);
+
+    zigbee_uart_write_frame(MCU_OTA_VER_REQ_CMD,length);
+
+    //return SUCCESS;
+}
+/*****************************************************************************
+函数名称 : zigbee_ota_notify_send
+功能描述 : OTA升级通知回复
+输入参数 : status：状态
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_notify_send(unsigned char status)
+{
+    unsigned short length = 0;
+  
+    length = set_zigbee_uart_byte(length,status);
+
+    zigbee_uart_write_frame(MCU_OTA_NOTIFY_CMD,length);
+
+    //return SUCCESS;
+}
+/*****************************************************************************
+函数名称 : zigbee_ota_data_req_send
+功能描述 : OTA固件内容请求
+输入参数 : pid：PID
+					 ver：版本号
+					 image_offset：数据包偏移量
+					 req_data_len: 数据包大小
+返回参数 : 无
+*****************************************************************************/
+void zigbee_ota_data_req_send(unsigned char* pid, \
+                                            unsigned char ver, \
+                                            unsigned int image_offset, \
+                                            unsigned char req_data_len)
+{
+    unsigned short length = 0, pid_len = 8;
+
+    while(pid_len--)
+    {
+        length = set_zigbee_uart_byte(length,*pid++);
+    }
+    length = set_zigbee_uart_byte(length,ver);
+    length = set_zigbee_uart_byte(length,image_offset >> 24);
+    length = set_zigbee_uart_byte(length,image_offset >> 16);
+    length = set_zigbee_uart_byte(length,image_offset >> 8);
+    length = set_zigbee_uart_byte(length,image_offset & 0xff);
+
+    length = set_zigbee_uart_byte(length,req_data_len);
+
+    zigbee_uart_write_frame(MCU_OTA_DATA_REQ_CMD,length);
+
+  //  return SUCCESS;
+}
+/*****************************************************************************
+函数名称 : zigbee_ota_end_req_send
+功能描述 : OTA固件升级结果上报
+输入参数 : status：状态
+					 pid：PID
+					 ver：版本号
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_end_req_send(unsigned char status, \
+                                            unsigned char* pid, \
+                                            unsigned char ver)
+{
+    unsigned short length = 0, pid_len = 8;
+    
+    length = set_zigbee_uart_byte(length,status);
+     while(pid_len--)
+    {
+        length = set_zigbee_uart_byte(length,*pid++);
+    }
+    
+    length = set_zigbee_uart_byte(length,ver);
+    zigbee_uart_write_frame(MCU_OTA_END_CMD,length);
+    
+  //  return SUCCESS;
+}
+
+
+
+
+
+/*****************************************************************************
+函数名称 : product_info_cmd_handle
+功能描述 : 产品信息获取（PID和版本号）
+输入参数 : 无
+返回参数 : 无
+*****************************************************************************/
+static void product_info_cmd_handle()
+{
+    unsigned char length = 0;
+
+    length = set_zigbee_uart_buffer(length,(unsigned char *)"{\"p\":\"",my_strlen((unsigned char *)"{\"p\":\""));
+    length = set_zigbee_uart_buffer(length,(unsigned char *)PRODUCT_KEY,my_strlen((unsigned char *)PRODUCT_KEY));
+    length = set_zigbee_uart_buffer(length,(unsigned char *)"\",\"v\":\"",my_strlen((unsigned char *)"\",\"v\":\""));
+    length = set_zigbee_uart_buffer(length,(unsigned char *)MCU_VER,my_strlen((unsigned char *)MCU_VER));
+    length = set_zigbee_uart_buffer(length,(unsigned char *)"\"}",my_strlen((unsigned char *)"\"}"));
+
+    zigbee_uart_write_frame(PRODUCT_INFO_CMD, length);
+}
+
+/*****************************************************************************
+函数名称 : zigbee_state_cmd_handle
+功能描述 : ZigBee模块网络状态通知
+输入参数 : current_state: 当前网络状态
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_state_cmd_handle(unsigned char current_state)
+{
+	unsigned char temp = current_state;
+    zigbee_uart_write_frame(ZIGBEE_STATE_CMD, 0);
+}
+
+/*****************************************************************************
+函数名称 : zigbee_cfg_cmd_handle
+功能描述 : ZigBee模块配置信息通知
+输入参数 : 无
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_cfg_cmd_handle(void)
+{
+    return;
+}
+
+/*****************************************************************************
+函数名称 : zigbee_data_point_handle
+功能描述 : ZigBee模块dp命令下发处理
+输入参数 : value:下发数据源指针
+返回参数 : ret:返回数据处理结果
+*****************************************************************************/
+static unsigned char zigbee_data_point_handle(const unsigned char value[])
+{
+  unsigned char dp_id,index;
+  unsigned char dp_type;
+  unsigned char ret;
+  unsigned short dp_len;
+  
+  dp_id = value[0];
+  dp_type = value[1];
+  dp_len = value[2] * 0x100;
+  dp_len += value[3];
+  
+
+  index = get_dowmload_dpid_index(dp_id);
+
+  if(dp_type != download_cmd[index].dp_type)
+  {
+    //错误提示
+    return FALSE;
+  }
+  else
+  {
+    ret = dp_download_handle(dp_id,value + 4,dp_len);
+  }
+  
+  return ret;
+}
+
+/*****************************************************************************
+函数名称 : zigbee_data_rsp_handle
+功能描述 : ZigBee模块状态上报响应
+输入参数 : rsp_status:状态上报status
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_data_rsp_handle(unsigned char rsp_status)
+{
+    //用户自行处理
+	unsigned char temp;
+	temp = rsp_status;
+}
+
+#ifdef SERIAL_PROTOCOL_SCENE_ENABLE
+/*****************************************************************************
+函数名称 : zigbee_scene_switch_num_get_handle
+功能描述 : ZigBee场景开关个数获取
+输入参数 : rsp_status:状态上报status
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_scene_switch_num_get_handle(void)
+{
+    //用户自行处理
+}
+
+/*****************************************************************************
+函数名称 : zigbee_scene_report_status_handle
+功能描述 : ZigBee场景开关执行状态处理
+输入参数 : scene_status:场景执行status
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_scene_report_status_handle(unsigned char scene_status)
+{
+    //用户自行处理
+}
+#endif
+
+/*****************************************************************************
+函数名称 : zigbee_scene_report_status_handle
+功能描述 : ZigBee模块RF功能测试结果处理
+输入参数 : result:结果返回状态， true是成功， false是失败
+输入参数 : rssi:ZigBee模块rssi测试数值（0-100）
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_rf_test_result_handle(bool result, unsigned char rssi)
+{
+    zigbee_test_result( result, rssi);
+}
+
+#ifdef SUPPORT_MCU_FIRM_UPDATE 
+/*****************************************************************************
+函数名称 : zigbee_ota_ver_req_handle
+功能描述 : ZigBee模块获取MCU固件版本号
+输入参数 : 无
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_ver_req_handle(void)
+{
+	//用户自行处理，以下代码仅做参考
+	/*
+	if(x==0)
+	{
+  zigbee_ota_ver_req_send(NOW_MCU_VER);
+	x=1;
+	}
+	if(x==1)
+	{
+	zigbee_ota_ver_req_send(UPDATE_MCU_VER);
+	}
+	*/
+
+}
+
+
+/*****************************************************************************
+函数名称 : zigbee_ota_notify_handle
+功能描述 : ZigBee模块通知MCU OTA升级信息
+输入参数 : pid： 设备pid信息
+输入参数 : version： ota固件版本号
+输入参数 : image_size： ota固件大小
+输入参数 : image_crc： ota固件校验和
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_notify_handle(unsigned char* pid, \
+                                            unsigned char version, \
+                                            unsigned int image_size, \
+                                            unsigned int image_crc)
+
+{
+	//用户自行处理，以下代码仅做参考
+	/*
+	unsigned char i=0;
+	for(i=0;i<8;i++)
+	{
+		PID[i]=pid[i];
+	}
+	
+	update_mcu_status=0;
+  zigbee_ota_notify_send(update_mcu_status);
+	*/
+
+}
+
+/*****************************************************************************
+函数名称 : zigbee_ota_data_rsp_handle
+功能描述 : ZigBee模块通知MCU OTA升级信息
+输入参数 : status: 0 成功， 1 失败
+输入参数 : pid： 设备pid信息
+输入参数 : version： ota固件版本号
+输入参数 : image_offset： ota固件偏移大小
+输入参数 : data_len：ota升级数据长度
+输入参数 : data： ota升级数据
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_ota_data_rsp_handle(unsigned char status, 
+                                    unsigned char* pid, \
+                                    unsigned char version, \
+                                    unsigned int  image_offset, \
+                                    unsigned char data_len, \
+                                    unsigned char* data)
+{
+	//用户自行处理，以下代码仅做参考
+	/*
+	unsigned  char i;
+   
+		for(i=0;i<data_len;i++)
+	{
+		DATA[IMAGE_OFFSET+i]=data[i];
+	}
+		IMAGE_OFFSET+=5;
+		zigbee_ota_data_req_send(PID,version,IMAGE_OFFSET,5);
+	if(data_len<5)
+	{
+		IMAGE_OFFSET=0;
+		zigbee_ota_end_req_send(0,pid,UPDATE_MCU_VER);
+	}
+//		zigbee_ota_end_req_send(0,pid,UPDATE_MCU_VER);
+	*/
+
+}
+#endif
+/*****************************************************************************
+函数名称 : zigbee_time_get_handle
+功能描述 : 网络数据同步处理
+输入参数 : data：数据指针
+输入参数 : data_len：数据长度
+返回参数 : 无
+*****************************************************************************/
+static void zigbee_time_get_handle(unsigned char* data0, unsigned char data_len)
+{
+    unsigned long time1 =0, time2 = 0;
+    time_t localTime, utcTime;
+    unsigned char i = 0;
+    unsigned char* ptr = data0;
+    
+    if (data_len < 8)
+    {
+        return;
+    }
+
+    my_memset(&localTime, 0, sizeof(time_t));
+    my_memset(&utcTime, 0, sizeof(time_t));
+
+    for(i=0; i<3; i++) /*UTC time*/
+    {
+        time1 |= *ptr++;
+        time1 = time1 << 8;
+    }
+    time1 |= *ptr++;
+
+    for(i=0; i<3; i++) /*local time*/
+    {
+        time2 |= *ptr++;
+        time2 = time2 << 8;
+    }
+    time2 |= *ptr++;
+
+    zigbee_time_convert(time1, &utcTime);
+    zigbee_time_convert(time2, &localTime);
+
+    mcu_write_rtctime(TRUE, &utcTime);
+    mcu_write_rtctime(FALSE, &localTime);
+}
+
+/*****************************************************************************
+函数名称 : set_zigbee_state
+功能描述 : 设置zigbee的网络状态
+输入参数 : state 枚举类型
+返回参数 : 无
+*****************************************************************************/
+void set_zigbee_state(ZIGBEE_STATE_E state)
+{
+    zigbee_state = state;
+}
+
+
+/*****************************************************************************
+函数名称 : get_zigbee_state
+功能描述 : 获取zigbee的网络状态
+输入参数 : state 枚举类型
+返回参数 : 无
+*****************************************************************************/
+ZIGBEE_STATE_E get_zigbee_state(void)
+{
+    return zigbee_state;
+}
+
+/*****************************************************************************
+函数名称 : data_handle
+功能描述 : 数据帧处理
+输入参数 : offset:数据起始位
+返回参数 : 无
+*****************************************************************************/
+ void data_handle(unsigned short offset)
+{
+    unsigned char cmd_type = 0;
+    unsigned short total_len = 0, seq_num = 0;
+
+    cmd_type   = zigbee_uart_rx_buf[offset + FRAME_TYPE];
+    total_len  = zigbee_uart_rx_buf[offset + LENGTH_HIGH] * 0x100;
+    total_len += zigbee_uart_rx_buf[offset + LENGTH_LOW];
+		
+		seq_num = zigbee_uart_rx_buf[offset + SEQ_HIGH] << 8;
+    seq_num += zigbee_uart_rx_buf[offset + SEQ_LOW];
+    seq_num_set(seq_num);
+    
+    switch(cmd_type)
+    {
+        case PRODUCT_INFO_CMD:
+            product_info_cmd_handle();
+            break;
+
+        case ZIGBEE_STATE_CMD:
+            {
+                ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
+                set_zigbee_state(current_state);
+                zigbee_state_cmd_handle(current_state);
+            }
+            break;
+
+        case ZIGBEE_CFG_CMD:
+            zigbee_cfg_cmd_handle();
+            break;
+
+        case ZIGBEE_DATA_REQ_CMD:
+            {
+                unsigned char i = 0, ret;
+                unsigned short dp_len = 0;
+                
+                for(i = 0;i < total_len;)
+                {
+                  dp_len = zigbee_uart_rx_buf[offset + DATA_START + i + 2] * 0x100;
+                  dp_len += zigbee_uart_rx_buf[offset + DATA_START + i + 3];
+
+                  ret = zigbee_data_point_handle((unsigned char *)zigbee_uart_rx_buf + offset + DATA_START + i);
+                  
+                  if(SUCCESS == ret)
+                  {
+                    //成功提示
+                  }
+                  else
+                  {
+                    //错误提示
+                  }
+                  i += (dp_len + 4);
+                }
+            }
+            break;
+
+        case DATA_RSP_SYNC_CMD:
+        case DATA_RSP_ASYNC_CMD:
+            {
+                unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
+                zigbee_data_rsp_handle( rsp_status);
+            }
+            break;
+
+#ifdef SERIAL_PROTOCOL_SCENE_ENABLE
+        case SCENE_SWITCH_NUM_GET_CMD:
+            zigbee_scene_switch_num_get_handle();
+            break;
+
+        case SCENE_SWITCH_ID_REPORT_CMD:
+            {
+                unsigned char scene_status = zigbee_uart_rx_buf[offset + DATA_START];
+                zigbee_scene_report_status_handle(scene_status);
+            }
+            break;
+#endif
+
+        case FUNC_TEST_CMD:
+            {
+                bool flag = zigbee_uart_rx_buf[offset + DATA_START];
+                unsigned char rssi = zigbee_uart_rx_buf[offset + DATA_START + 1];
+                zigbee_rf_test_result_handle(flag, rssi);
+            }
+            break;
+#ifdef SUPPORT_MCU_FIRM_UPDATE             
+        case MCU_OTA_VER_REQ_CMD:
+            {
+                zigbee_ota_ver_req_handle();
+            }
+            break;
+
+        case MCU_OTA_NOTIFY_CMD:
+            {
+                unsigned char pid[8] = {0};
+                unsigned char version = 0, index = 0;
+                unsigned int image_size = 0;
+                unsigned int image_crc = 0;
+                unsigned char receive_len = offset + DATA_START;
+
+                my_memcpy(pid,(const char *)zigbee_uart_rx_buf+receive_len,8);
+                receive_len += 8;
+                version = zigbee_uart_rx_buf[receive_len];
+                receive_len++;
+
+                do
+                {
+                    image_size += zigbee_uart_rx_buf[receive_len];
+                    receive_len++;
+                    image_size = image_size << 8;
+										index++;
+                }
+                while (index < 3);
+								
+                image_size += zigbee_uart_rx_buf[receive_len];
+                receive_len++;
+
+                index = 0;
+                do
+                {
+                    image_crc += zigbee_uart_rx_buf[receive_len];
+                    receive_len++;
+                    image_size = image_crc << 8;
+										index++;
+                }
+                while (index < 3);
+                image_crc += zigbee_uart_rx_buf[receive_len];
+                receive_len++;
+                
+                zigbee_ota_notify_handle(pid, version, image_size, image_crc);
+            }
+            break;
+
+        case MCU_OTA_DATA_REQ_CMD:
+            {
+                unsigned char status = 0;
+                unsigned char pid[8] = {0};
+                unsigned char version = 0, index = 0;;
+                unsigned int image_offset = 0;
+                unsigned char receive_len = offset + DATA_START;
+                unsigned char data_len = 0;
+                unsigned char data[64] = {0};
+
+                status = zigbee_uart_rx_buf[receive_len];
+								if(status==0)
+									{
+										receive_len++;
+										//memcpy(pid, &zigbee_uart_rx_buf[receive_len]);
+										my_memcpy(pid,(const char *)(zigbee_uart_rx_buf+receive_len),8);
+										receive_len += 8;
+
+										version = zigbee_uart_rx_buf[receive_len];
+										receive_len++;
+
+										do
+										{
+												image_offset += zigbee_uart_rx_buf[receive_len];
+												receive_len++;
+												image_offset = image_offset << 8;
+												index++;
+										}
+										while (index < 3);
+										image_offset += zigbee_uart_rx_buf[receive_len];
+										receive_len++;
+										data_len = total_len+PROTOCOL_HEAD - receive_len;
+										my_memcpy(data, (const char *)(zigbee_uart_rx_buf+receive_len),data_len);
+										//data_len = total_len - receive_len;
+
+										zigbee_ota_data_rsp_handle(status, \
+																				pid, \
+																				version, \
+																				image_offset, \
+																				data_len, \
+																				data);
+									}
+								else
+									return;
+            }
+            break;
+#endif            
+        case TIME_GET_CMD:
+            zigbee_time_get_handle((unsigned char *)zigbee_uart_rx_buf + offset + DATA_START, total_len);
+            break;
+
+        default:
+            break;
+    }
+}
+
 
