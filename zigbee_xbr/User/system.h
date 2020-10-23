@@ -71,9 +71,9 @@ SYSTEM_EXTERN volatile unsigned char xdata zigbee_queue_buf[PROTOCOL_HEAD + ZIGB
 SYSTEM_EXTERN volatile unsigned char xdata zigbee_uart_rx_buf[PROTOCOL_HEAD + ZIGBEE_UART_RECV_BUF_LMT];   //串口接收缓存
 SYSTEM_EXTERN volatile unsigned char xdata zigbee_uart_tx_buf[PROTOCOL_HEAD + ZIGBEE_UART_SEND_BUF_LMT];   //串口发送缓存
 //
-SYSTEM_EXTERN volatile unsigned char xdata *queue_in;
-SYSTEM_EXTERN volatile unsigned char xdata *queue_out;
-SYSTEM_EXTERN volatile unsigned short xdata queue_total_data;
+SYSTEM_EXTERN volatile unsigned char *queue_in;
+SYSTEM_EXTERN volatile unsigned char *queue_out;
+SYSTEM_EXTERN volatile unsigned short queue_total_data;
 
 /*****************************************************************************
 函数名称 : set_zigbee_uart_byte

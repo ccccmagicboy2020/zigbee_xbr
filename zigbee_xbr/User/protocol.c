@@ -70,13 +70,13 @@ void Delay_us_1(uint q1);
 
 void reset_bt_module(void)
 {
-	send_data(0x55);//p15，重置模块
+/* 	send_data(0x55);//p15，重置模块
 	send_data(0xAA);
 	send_data(0x00);
 	send_data(0x04);
 	send_data(0x00);
 	send_data(0x00);
-	send_data(0x03);
+	send_data(0x03); */
 }
 /******************************************************************************
                                 移植须知:
@@ -183,7 +183,7 @@ void all_data_update(void)
 		light=3;		
 	else if(LIGHT_TH==20)
 		light=4;
-	else //if(LIGHT_TH==200)
+	else //其它值
 		light=5;
 
     mcu_dp_enum_update(DPID_CDS, light); //枚举型数据上报;
