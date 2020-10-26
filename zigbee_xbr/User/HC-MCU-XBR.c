@@ -1241,6 +1241,13 @@ void main()
 	EA = 1;
 
 	wait1();
+	
+	while (ZIGBEE_STATE_JOINING == get_zigbee_state())
+	{
+		Delay_ms(100);
+	}
+
+	all_data_update();
 
 	slowchcnt = lightvalue;
 	//Delay_ms(200);
@@ -1252,12 +1259,16 @@ void main()
 	wait2();
 
 	SUM = 0;
+	
+
+
 	while (1)
 	{
 		if (resetbtcnt >= 3)	//行为是每三次上电会复位一次蓝牙模块
 		{
 			resetbtcnt = 0;
 			//reset_bt_module();
+			mcu_network_start();
 		}
 
 //		if (check_group_count <= 2) //一上电间隔一秒获取3次群组地址
