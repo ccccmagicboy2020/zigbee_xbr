@@ -109,6 +109,8 @@ u8 xdata Linkage_flag = 0;
 u8 xdata Light_on_flag = 0;
 u8 xdata Light_on_flagpre = 0;
 
+u8 xdata zigbee_join_cnt = 0;
+
 /*
 	 u8 idata groupaddr2 = 0;
 	 u8 idata groupaddr3 = 0;
@@ -128,7 +130,7 @@ void savevar(void);
 
 //unsigned char guc_Write_a[5] = {0};	//写入数据
 unsigned char xdata guc_Read_a[10] = {0x00}; //用于存放读取的数据
-unsigned char xdata guc_Read_a1[1] = {0x00}; //用于存放读取的数据
+unsigned char xdata guc_Read_a1[2] = {0x00}; //用于存放读取的数据
 // unsigned char guc_Uartflag = 0;					  //发送标志位
 // unsigned char guc_Uartcnt = 0;					  //发送计数
 // unsigned char guc_Uartbuf_a[2] = {0x00};	//缓存数组
@@ -628,8 +630,14 @@ void set_var(void)
 
 	//	addrend = guc_Read_a[9];
 
-	Flash_ReadArr(0X2f80, 1, guc_Read_a1); //读取地址0x2F00所在扇区
+	Flash_ReadArr(0X2f80, 2, guc_Read_a1); //读取地址0x2F00所在扇区
 	resetbtcnt = guc_Read_a1[0];
+	zigbee_join_cnt = guc_Read_a1[1];
+	savevar();
+	if (0 == zigbee_join_cnt)
+	{
+		mcu_network_start();
+	}
 }
 
 void XBRHandle(void)
@@ -1241,11 +1249,6 @@ void main()
 	EA = 1;
 
 	wait1();
-	
-	while (ZIGBEE_STATE_JOINING == get_zigbee_state())
-	{
-		Delay_ms(100);
-	}
 
 	all_data_update();
 
@@ -1260,8 +1263,6 @@ void main()
 
 	SUM = 0;
 	
-
-
 	while (1)
 	{
 		if (resetbtcnt >= 3)	//行为是每三次上电会复位一次蓝牙模块
@@ -1588,6 +1589,8 @@ void savevar(void)
 	Flash_EraseBlock(0x2F80);
 	Delay_us_1(10000);
 	FLASH_WriteData(0,0x2F80+0);
+	
+	FLASH_WriteData(1,0x2F80+1);
 	
 	EA=1;				//-20200927
 
