@@ -77,6 +77,7 @@ void reset_bt_module(void)
 	send_data(0x00);
 	send_data(0x00);
 	send_data(0x03); */
+	mcu_network_start();
 }
 /******************************************************************************
                                 移植须知:
@@ -294,7 +295,7 @@ static unsigned char dp_download_bright_value_handle(const unsigned char value[]
 	
     lightvalue = bright_value;
 
-	if(SWITCHfXBR==0)
+	//if(SWITCHfXBR==0)
 	{
 		XRBoffbrightvalue = bright_value;
 	}

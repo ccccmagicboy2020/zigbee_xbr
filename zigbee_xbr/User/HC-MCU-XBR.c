@@ -1268,8 +1268,7 @@ void main()
 		if (resetbtcnt >= 3)	//行为是每三次上电会复位一次蓝牙模块
 		{
 			resetbtcnt = 0;
-			//reset_bt_module();
-			mcu_network_start();
+			reset_bt_module();
 		}
 
 //		if (check_group_count <= 2) //一上电间隔一秒获取3次群组地址
