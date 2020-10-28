@@ -1250,8 +1250,6 @@ void main()
 
 	wait1();
 
-	all_data_update();
-
 	slowchcnt = lightvalue;
 	//Delay_ms(200);
 	PWM3init(lightvalue);

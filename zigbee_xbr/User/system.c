@@ -695,6 +695,16 @@ ZIGBEE_STATE_E get_zigbee_state(void)
                 ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
                 set_zigbee_state(current_state);
                 zigbee_state_cmd_handle(current_state);
+				
+				if (ZIGBEE_STATE_NOT_JOIN == current_state)
+				{
+					mcu_network_start();
+				}
+				
+				if (ZIGBEE_STATE_JOINED == current_state)
+				{
+					all_data_update();
+				}
             }
             break;
 
