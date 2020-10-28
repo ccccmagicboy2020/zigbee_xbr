@@ -959,12 +959,12 @@ void XBRHandle(void)
 
 			//SUM2 = SUM1;
 			
-			//send_data(average >> 4);
-			//send_data(light_ad);
-			//send_data(SUM0 >> 16);
-			//send_data(SUM0 >> 8);
-			//send_data(SUM2 >> 16);
-			//send_data(SUM2 >> 8); //20200927	≤‚ ‘”√
+			send_data(average >> 4);
+			send_data(light_ad);
+			send_data(SUM0 >> 16);
+			send_data(SUM0 >> 8);
+			send_data(SUM1 >> 16);
+			send_data(SUM1 >> 8); //20200927	≤‚ ‘”√
 
 			SUM = 0;
 			SUM1 = 0;
