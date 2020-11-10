@@ -92,7 +92,7 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //感应延时(可下发可上报)
 //备注:
 #define DPID_PIR_DELAY 102
-//感应开关(可下发可上报)
+//雷达开关(可下发可上报)
 //备注:
 #define DPID_SWITCH_XBR 103
 //伴亮延时(可下发可上报)
@@ -101,12 +101,21 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //感应强度(可下发可上报)
 //备注:
 #define DPID_SENSE_STRESS 105
-//灯开关(可下发可上报)
+//开关灯(可下发可上报)
 //备注:
 #define DPID_SWITCH_LED2 113
 //联动(可下发可上报)
 //备注:
 #define DPID_SWITCH_LINKAGE 114
+//全天伴亮(可下发可上报)
+//备注:
+#define DPID_ALL_DAY_MICRO_LIGHT 115
+//雷达触发计数(只上报)
+//备注:
+#define DPID_RADAR_TRIGGER_TIMES 116
+//计数清零(只下发)
+//备注:
+#define DPID_CLEAR_TRIGGER_NUMBER 117
 
 
 

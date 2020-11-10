@@ -110,6 +110,8 @@ u8 xdata Light_on_flag = 0;
 u8 xdata Light_on_flagpre = 0;
 
 u8 xdata zigbee_join_cnt = 0;
+u8 xdata all_day_micro_light_enable = 0;
+u16 xdata radar_trig_times = 0;
 
 /*
 	 u8 idata groupaddr2 = 0;
@@ -946,6 +948,8 @@ void XBRHandle(void)
 							//									send_data(slowchcnt);
 							//									send_data(0xaa);
 							//send_data(0xdd);
+							radar_trig_times++;
+							mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
 
 							SUM1_num = 8;
 							LIGHT_off = 0;
@@ -959,12 +963,12 @@ void XBRHandle(void)
 
 			//SUM2 = SUM1;
 			
-			send_data(average >> 4);
-			send_data(light_ad);
-			send_data(SUM0 >> 16);
-			send_data(SUM0 >> 8);
-			send_data(SUM1 >> 16);
-			send_data(SUM1 >> 8); //20200927	测试用
+			//send_data(average >> 4);
+			//send_data(light_ad);
+			//send_data(SUM0 >> 16);
+			//send_data(SUM0 >> 8);
+			//send_data(SUM2 >> 16);
+			//send_data(SUM2 >> 8); //20200927	测试用
 
 			SUM = 0;
 			SUM1 = 0;
@@ -1203,7 +1207,7 @@ void reset_bt_module(void);
 ***************************************************************************************/
 void main()
 {
-//	u8 i;
+	u8 i;
 	zigbee_protocol_init(); //mcu_sdk
 	InitSYS();
 	GPIO_Init();
@@ -1334,7 +1338,14 @@ void main()
 					if (LIGHT_off >= lowlightDELAY_NUM)
 					{
 						LIGHT_off = 0;
-						PWM3init(0);
+						if (1 == all_day_micro_light_enable)
+						{
+							//
+						}
+						else
+						{
+							PWM3init(0);
+						}
 					}
 				}
 			}
@@ -1356,19 +1367,19 @@ void main()
 			//联动
 			if (Linkage_flag == 1)
 			{
-//				if (Light_on_flagpre != Light_on_flag)
-//				{
-//					Light_on_flagpre = Light_on_flag;
-//					LIGHT = 1;
-//					//PWM3init(100);
-//					for (i = 0; i < 8; i++)
-//					{
-//						if (groupaddr[i] != 0)
-//						{
-//							mcu_dp_bool_mesh_update(DPID_SWITCH_LED2, SWITCHflag2, groupaddr[i]);
-//						}
-//					}
-//				}
+				if (Light_on_flagpre != Light_on_flag)
+				{
+					Light_on_flagpre = Light_on_flag;
+					LIGHT = 1;
+					//PWM3init(100);
+					for (i = 0; i < 8; i++)
+					{
+						//if (groupaddr[i] != 0)
+						{
+							//mcu_dp_bool_mesh_update(DPID_SWITCH_LED2, SWITCHflag2, groupaddr[i]);
+						}
+					}
+				}
 			}
 		}
 		else
