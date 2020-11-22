@@ -698,12 +698,13 @@ ZIGBEE_STATE_E get_zigbee_state(void)
 				
 				if (ZIGBEE_STATE_NOT_JOIN == current_state)
 				{
-					mcu_network_start();
+					//mcu_network_start();
+					//mcu_reset_zigbee();
 				}
-				
-				if (ZIGBEE_STATE_JOINED == current_state)
+				else if (ZIGBEE_STATE_JOINED == current_state)
 				{
 					all_data_update();
+					savevar();
 				}
             }
             break;
