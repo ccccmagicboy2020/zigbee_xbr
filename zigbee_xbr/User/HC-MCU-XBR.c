@@ -1158,11 +1158,14 @@ unsigned char PWM3init(unsigned char ab)
 	{
 		light_status_xxx = 1;
 	}
-
-	if (100 == ab)
+	else if (100 == ab)
 	{
 		light_status_xxx = 0;
-	}	
+	}
+	else
+	{
+		light_status_xxx = 2;
+	}
 	
 	if (1 == ab)
 	{
