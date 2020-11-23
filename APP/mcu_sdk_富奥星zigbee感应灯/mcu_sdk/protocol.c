@@ -59,6 +59,7 @@ const DOWNLOAD_CMD_S download_cmd[] =
   {DPID_ALL_DAY_MICRO_LIGHT, DP_TYPE_BOOL},
   {DPID_RADAR_TRIGGER_TIMES, DP_TYPE_VALUE},
   {DPID_CLEAR_TRIGGER_NUMBER, DP_TYPE_BOOL},
+  {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
 };
 
 
@@ -128,6 +129,7 @@ void all_data_update(void)
     mcu_dp_bool_update(DPID_SWITCH_LINKAGE,当前联动); //BOOL型数据上报;
     mcu_dp_bool_update(DPID_ALL_DAY_MICRO_LIGHT,当前全天伴亮); //BOOL型数据上报;
     mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,当前雷达触发计数); //VALUE型数据上报;
+    mcu_dp_enum_update(DPID_LIGHT_STATUS,当前灯状态); //枚举型数据上报;
 
 
 }
