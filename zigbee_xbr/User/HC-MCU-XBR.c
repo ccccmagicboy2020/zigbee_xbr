@@ -113,6 +113,8 @@ u8 xdata zigbee_join_cnt = 0;
 u8 xdata all_day_micro_light_enable = 0;
 u16 xdata radar_trig_times = 0;
 
+u8 xdata light_status_xxx = 0;
+
 /*
 	 u8 idata groupaddr2 = 0;
 	 u8 idata groupaddr3 = 0;
@@ -1151,6 +1153,16 @@ unsigned char PWM3init(unsigned char ab)
 {
 	float i11;
 	unsigned char j11;
+
+	if (0 == ab)
+	{
+		light_status_xxx = 1;
+	}
+
+	if (100 == ab)
+	{
+		light_status_xxx = 0;
+	}	
 	
 	if (1 == ab)
 	{
@@ -1280,6 +1292,12 @@ void main()
 		{
 			resetbtcnt = 0;
 			reset_bt_module();
+		}
+		
+		if (1 == check_group_flag)
+		{
+			check_group_flag = 0;
+			mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
 		}
 
 //		if (check_group_count <= 2) //一上电间隔一秒获取3次群组地址

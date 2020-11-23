@@ -116,6 +116,9 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //计数清零(只下发)
 //备注:
 #define DPID_CLEAR_TRIGGER_NUMBER 117
+//灯状态(只上报)
+//备注:
+#define DPID_LIGHT_STATUS 118
 
 
 

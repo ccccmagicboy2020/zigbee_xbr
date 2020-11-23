@@ -60,6 +60,7 @@ extern  u8 xdata Light_on_flag;	//
 extern u16 xdata groupaddr[8];
 extern u8 xdata all_day_micro_light_enable;
 extern u16 xdata radar_trig_times;
+extern u8 xdata light_status_xxx;
 
 //extern TYPE_BUFFER_S FlashBuffer;
 void send_data(u8 d);
@@ -116,6 +117,7 @@ const DOWNLOAD_CMD_S xdata download_cmd[] =
   {DPID_ALL_DAY_MICRO_LIGHT, DP_TYPE_BOOL},
   {DPID_RADAR_TRIGGER_TIMES, DP_TYPE_VALUE},
   {DPID_CLEAR_TRIGGER_NUMBER, DP_TYPE_BOOL},
+  {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
 };
 
 
@@ -218,6 +220,7 @@ void all_data_update(void)
 	
 	mcu_dp_bool_update(DPID_ALL_DAY_MICRO_LIGHT,all_day_micro_light_enable); //BOOL型数据上报;
     mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times); //VALUE型数据上报;
+    mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx); //枚举型数据上报;
 
 
 }
