@@ -115,6 +115,10 @@ u16 xdata radar_trig_times = 0;
 
 u8 xdata light_status_xxx = 0;
 
+u16 xdata radar_number_count = 0;
+u8 xdata radar_number_send_flag = 0;
+u8 xdata radar_number_send_flag2 = 0;
+
 /*
 	 u8 idata groupaddr2 = 0;
 	 u8 idata groupaddr3 = 0;
@@ -951,7 +955,8 @@ void XBRHandle(void)
 							//									send_data(0xaa);
 							//send_data(0xdd);
 							radar_trig_times++;
-							mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+							//mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+							radar_number_send_flag2 = 1;
 
 							SUM1_num = 8;
 							LIGHT_off = 0;
@@ -1302,6 +1307,16 @@ void main()
 			check_group_flag = 0;
 			mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
 		}
+		
+		if (1 == radar_number_send_flag)
+		{
+			if (1 == radar_number_send_flag2)
+			{
+				radar_number_send_flag = 0;
+				radar_number_send_flag2 = 0;
+				mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+			}
+		}
 
 //		if (check_group_count <= 2) //一上电间隔一秒获取3次群组地址
 //		{
@@ -1465,6 +1480,12 @@ void TIMER1_Rpt(void) interrupt TIMER1_VECTOR
 		light1scount = 0;
 		light1sflag = 1;
 	}
+	radar_number_count++;
+	if (radar_number_count >= 1100)
+	{
+		radar_number_count = 0;
+		radar_number_send_flag = 1;
+	}	
 }
 
 /***************************************************************************************
