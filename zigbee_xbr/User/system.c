@@ -728,6 +728,7 @@ ZIGBEE_STATE_E get_zigbee_state(void)
                   if(SUCCESS == ret)
                   {
                     //成功提示
+										savevar();
                   }
                   else
                   {

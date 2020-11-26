@@ -137,7 +137,7 @@ void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned 
 void savevar(void);
 
 //unsigned char guc_Write_a[5] = {0};	//写入数据
-unsigned char xdata guc_Read_a[10] = {0x00}; //用于存放读取的数据
+unsigned char xdata guc_Read_a[12] = {0x00}; //用于存放读取的数据
 unsigned char xdata guc_Read_a1[2] = {0x00}; //用于存放读取的数据
 // unsigned char guc_Uartflag = 0;					  //发送标志位
 // unsigned char guc_Uartcnt = 0;					  //发送计数
@@ -600,7 +600,7 @@ uchar read_ad(uchar ch)
 void set_var(void)
 {
 
-	Flash_ReadArr(0X2f00, 10, guc_Read_a); //读取地址0x2F00所在扇区
+	Flash_ReadArr(0X2f00, 12, guc_Read_a); //读取地址0x2F00所在扇区
 
 	TH = guc_Read_a[0];
 	TH <<= 8;
@@ -632,6 +632,12 @@ void set_var(void)
 		lowlightDELAY_NUM = 1;
 
 	SWITCHfXBR = (~guc_Read_a[7]) & 0x01;
+	
+	Linkage_flag = (guc_Read_a[8]) & 0x01;
+	
+	SWITCHflag2 = (guc_Read_a[9]) & 0x01;
+	
+	all_day_micro_light_enable = (guc_Read_a[10]) & 0x01;
 	//	addr = guc_Read_a[7];
 	//
 	//	devgroup = guc_Read_a[8];
@@ -1631,6 +1637,18 @@ void savevar(void)
 	
 	i=~SWITCHfXBR;//&0xff;
 	FLASH_WriteData(i,0x2F00+7);
+	Delay_us_1(100);
+	
+	i=Linkage_flag;
+	FLASH_WriteData(i,0x2F00+8);
+	Delay_us_1(100);	
+	
+	i=SWITCHflag2;
+	FLASH_WriteData(i,0x2F00+9);
+	Delay_us_1(100);	
+	
+	i=all_day_micro_light_enable;
+	FLASH_WriteData(i,0x2F00+10);
 	Delay_us_1(100);
 	
 //	i=addr;//&0xff;
