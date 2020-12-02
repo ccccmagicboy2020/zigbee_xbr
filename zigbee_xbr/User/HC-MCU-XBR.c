@@ -699,25 +699,27 @@ void XBRHandle(void)
 
 				//LIGHT++;
 
-				if (slowchcnt < 100)
-				{
-					slowchcnt = slowchcnt + 2; //
-					if (slowchcnt > 100)
-					{
-						slowchcnt = 100;
-					}
-				}
+				// if (slowchcnt < 100)
+				// {
+					// slowchcnt = slowchcnt + 2; //
+					// if (slowchcnt > 100)
+					// {
+						// slowchcnt = 100;
+					// }
+				// }
+				slowchcnt = 100;
 				PWM3init(slowchcnt);
 			}
 			else if (LIGHT_off == 1) //else if((SWITCHflag2==0)&&(LIGHT_off ==1))
 			{
-				if (slowchcnt > lightvalue)
-				{
-					if (slowchcnt >= 2)
-						slowchcnt -= 2;
-					if (slowchcnt < lightvalue)
-						slowchcnt = lightvalue;
-				}
+				// if (slowchcnt > lightvalue)
+				// {
+					// if (slowchcnt >= 2)
+						// slowchcnt -= 2;
+					// if (slowchcnt < lightvalue)
+						// slowchcnt = lightvalue;
+				// }
+				slowchcnt = lightvalue;
 				PWM3init(slowchcnt);
 			}
 		}
