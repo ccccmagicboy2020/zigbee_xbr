@@ -103,22 +103,27 @@ volatile u16 idata light1sflag = 0;		  //timer的秒标志
 //u8 xdata devgroup = 0;
 //u8 xdata addrend = 0;
 //u16 idata groupaddr[8] = {0};
-u8 xdata check_group_flag = 0;	//检查群组标志
-u8 xdata check_group_count = 0; //检查群组计数器
+//u8 xdata check_group_flag = 0;	//检查群组标志
+//u8 xdata check_group_count = 0; //检查群组计数器
 u8 xdata Linkage_flag = 0;
 u8 xdata Light_on_flag = 0;
 u8 xdata Light_on_flagpre = 0;
 
 u8 xdata zigbee_join_cnt = 0;
 u8 xdata all_day_micro_light_enable = 0;
+
 u16 xdata radar_trig_times = 0;
+u16 xdata radar_trig_times_last = 0;
 
 u8 xdata light_status_xxx = 0;
+u8 xdata light_status_xxx_last = 0;
 
 u16 xdata radar_number_count = 0;
 u8 xdata radar_number_send_flag = 0;
 u8 xdata radar_number_send_flag2 = 0;
 
+u8 xdata person_in_range_flag = 0;
+u8 xdata person_in_range_flag_last = 0;
 /*
 	 u8 idata groupaddr2 = 0;
 	 u8 idata groupaddr3 = 0;
@@ -1168,14 +1173,17 @@ unsigned char PWM3init(unsigned char ab)
 	if (0 == ab)
 	{
 		light_status_xxx = 1;
+		person_in_range_flag = 0;
 	}
 	else if (100 == ab)
 	{
 		light_status_xxx = 0;
+		person_in_range_flag = 1;
 	}
 	else
 	{
 		light_status_xxx = 2;
+		person_in_range_flag = 1;
 	}
 	
 	if (1 == ab)
@@ -1308,11 +1316,22 @@ void main()
 			reset_bt_module();
 		}
 		
-		if (1 == check_group_flag)
-		{
-			check_group_flag = 0;
-			mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
-		}
+		// if (1 == check_group_flag)
+		// {
+			// check_group_flag = 0;
+			if (light_status_xxx != light_status_xxx_last)
+			{
+				mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
+				light_status_xxx_last = light_status_xxx;
+			}
+			
+			if (person_in_range_flag != person_in_range_flag_last)
+			{
+				mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag);
+				person_in_range_flag_last = person_in_range_flag;
+			}			
+
+		// }
 		
 		if (1 == radar_number_send_flag)
 		{
@@ -1320,7 +1339,11 @@ void main()
 			{
 				radar_number_send_flag = 0;
 				radar_number_send_flag2 = 0;
-				mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+				if (radar_trig_times_last != radar_trig_times)
+				{
+					mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+					radar_trig_times_last = radar_trig_times;
+				}
 			}
 		}
 
@@ -1482,12 +1505,12 @@ void TIMER1_Rpt(void) interrupt TIMER1_VECTOR
 	light1scount++;
 	if (light1scount >= 1000)
 	{
-		check_group_flag = 1;
+		//check_group_flag = 1;
 		light1scount = 0;
 		light1sflag = 1;
 	}
 	radar_number_count++;
-	if (radar_number_count >= 1100)
+	if (radar_number_count >= 1000)
 	{
 		radar_number_count = 0;
 		radar_number_send_flag = 1;
