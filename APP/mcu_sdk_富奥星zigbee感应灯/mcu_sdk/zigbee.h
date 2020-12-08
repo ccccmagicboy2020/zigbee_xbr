@@ -1,98 +1,92 @@
-/****************************************Copyright (c)*************************
-**                               版权所有 (C), 2018-0704, 涂鸦科技
-**
-**                                 http://www.tuya.com
-**
-**--------------文件信息-------------------------------------------------------
-**文   件   名: zigbee.h
-**描        述: zigbee文件头定义
-**使 用 说 明 : 用户无需关心该文件实现内容
-**
-**
-**--------------当前版本修订---------------------------------------------------
-** 版  本: v1.0.0
-** 日　期: 2018年7月4日
-** 描　述: 1:协议初版
-**
-**-----------------------------------------------------------------------------
-******************************************************************************/
+/**
+* @file  zigbee.h
+* @brief define the macros which used in this SDK
+* @author luchao
+* @date 2020.03.13
+* @par email:
+* luchao@tuya.com
+* @copyright HANGZHOU TUYA INFORMATION TECHNOLOGY CO.,LTD
+* @par company
+* http://www.tuya.com
+*/
+
 #ifndef __ZIGBEE_H_
 #define __ZIGBEE_H_
 
-#define    MCU_SDK_VERSION         0X01
-//=============================================================================
-/*定义常量*/
-//=============================================================================
-#ifndef TRUE
-#define         TRUE                1
-#endif
-//
-#ifndef FALSE
-#define         FALSE               0
-#endif
-//
-#ifndef NULL
-#define         NULL                ((void *) 0)
-#endif
-
-#ifndef SUCCESS
-#define         SUCCESS             1
-#endif
-
-#ifndef ERROR
-#define         ERROR               0
-#endif
-
-#ifndef INVALID
-#define         INVALID             0xFF
-#endif
-
-#ifndef ENABLE
-#define         ENABLE                1
-#endif
-//
-#ifndef DISABLE
-#define         DISABLE               0
-#endif
-//=============================================================================
-//dp数据点类型
-//=============================================================================
-#define         DP_TYPE_RAW                     0x00				//RAW型
-#define         DP_TYPE_BOOL                    0x01	            //布尔型
-#define         DP_TYPE_VALUE                   0x02	            //数值型
-#define         DP_TYPE_STRING                  0x03				//字符串型
-#define         DP_TYPE_ENUM                    0x04				//枚举型
-#define         DP_TYPE_BITMAP                    0x05				//故障型
-
-typedef enum
-{
-  ZIGBEE_STATE_NOT_JOIN =0,  //未连接网络
-  ZIGBEE_STATE_JOINED,       //处于在网状态
-  ZIGBEE_STATE_ERROR,        //网络状态错误（未收到muc pid）
-  ZIGBEE_STATE_JOINING,      //配网中
-}ZIGBEE_STATE_E;
-
-//=============================================================================
-//zigbee复位状态
-//=============================================================================
-#define         RESET_ZIGBEE_ERROR                0
-#define         RESET_ZIGBEE_SUCCESS              1
-
+#error "when other fils which have used the .c files in this SDK should include zigbee.h, and delete this line"
 
 #include "protocol.h"
 #include "system.h"
 #include "mcu_api.h"
 
-#ifndef bool
-#define bool unsigned char
+#ifdef __cplusplus
+extern "C"
+{
 #endif
 
-//=============================================================================
-//下发命令
-//=============================================================================
+#define  MCU_SDK_VER   (1.0.1)
+
+///< constant define 
+#ifndef         TRUE
+#define         TRUE                1
+#endif
+
+#ifndef         FALSE
+#define         FALSE               0
+#endif
+
+#ifndef         NULL
+#define         NULL                ((void *) 0)
+#endif
+
+#ifndef         SUCCESS
+#define         SUCCESS             1
+#endif
+
+#ifndef         ERROR
+#define         ERROR               0
+#endif
+
+#ifndef         INVALID
+#define         INVALID             0xFF
+#endif
+
+#ifndef         ENABLE
+#define         ENABLE                1
+#endif
+
+#ifndef         DISABLE
+#define         DISABLE               0
+#endif
+
+///< dp type
+#define         DP_TYPE_RAW                     0x00				 //RAW
+#define         DP_TYPE_BOOL                    0x01	       //bool
+#define         DP_TYPE_VALUE                   0x02	       //value
+#define         DP_TYPE_STRING                  0x03				//string
+#define         DP_TYPE_ENUM                    0x04				//enum 
+#define         DP_TYPE_BITMAP                  0x05				//fault
+#define         DP_TYPE_FAULT                   DP_TYPE_BITMAP    
+//< work mode 
+#define         NORMAL_MODE             0x00                      //normal mode
+#define         FACTORY_MODE            0x01                     //factory mode 
+#define         UPDATE_MODE             0X02                    //updata mode  
+
+
+#define         ZG_NO_NWK               0x00                                    
+#define         ZG_JOIN_NWK             0x01                                    
+#define         ZG_JOIN_CLOUD           0X02                                   
+#define         ZG_NO_CLOUD             0x03                                    
+#define         ZG_REPORT_OK            0x10                                    
+#define         ZG_REPORT_ERR           0X20                                    	
+
+///< dp struct 
 typedef struct {
-  unsigned char dp_id;                        //dp序号
-  unsigned char dp_type;                          //dp类型
+  unsigned char dp_id;                     
+  unsigned char dp_type;           
 } DOWNLOAD_CMD_S;
 
+#ifdef __cplusplus
+}
+#endif
 #endif
