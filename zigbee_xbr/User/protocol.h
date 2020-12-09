@@ -1,85 +1,82 @@
-/****************************************Copyright (c)*************************
-**                               版权所有 (C), 2018-0704, 涂鸦科技
-**
-**                                 http://www.tuya.com
-**
-**--------------文件信息-------------------------------------------------------
-**文   件   名: protocol.h
-**描        述: 下发/上报数据处理函数
-**使 用 说 明 :
-
-                  *******非常重要，一定要看哦！！！********
-
-** 1、用户在此文件中实现数据下发/上报功能
-** 2、DP的ID/TYPE及数据处理函数都需要用户按照实际定义实现
-** 3、当开始某些宏定义后需要用户实现代码的函数内部有#err提示,完成函数后请删除该#err
-**
-**--------------当前版本修订---------------------------------------------------
-** 版  本: v1.0.0
-** 日　期: 2018年7月4日
-** 描　述: 1:协议初版
-**
-**-----------------------------------------------------------------------------
-******************************************************************************/
+/**
+* @file  protocol.h
+* @brief declaration of fuction in  protocol.c
+* @author luchao
+* @date 2020.03.13
+* @par email:
+* luchao@tuya.com
+* @copyright HANGZHOU TUYA INFORMATION TECHNOLOGY CO.,LTD
+* @par company
+* http://www.tuya.com
+*/
 #ifndef __PROTOCOL_H_
 #define __PROTOCOL_H_
 
-
-#ifndef bool
-#define bool unsigned char
+#ifdef __cplusplus
+extern "C"
+{
 #endif
-/******************************************************************************
-                            用户相关信息配置
-******************************************************************************/
-/******************************************************************************
-                            1:修改产品信息                
-******************************************************************************/
+
+///< product INFORMATION
+
 #define PRODUCT_KEY "rl7fwq32"    //开发平台创建产品后生成的16位字符产品唯一标识
 
 
-#define MCU_VER "1.0.0"           //用户的软件版本,用于MCU固件升级,MCU升级版本需修改
+///< mcu version 
+#define MCU_VER "1.0.1"                          
+ 
+#define ZIGBEE_UART_QUEUE_LMT             24             // using to save data received from uart
+#define ZIGBEE_UART_RECV_BUF_LMT          24             //
+#define ZIGBEE_UART_SEND_BUF_LMT          24             //
 
-/******************************************************************************
-                         2:定义收发缓存:
-                    如当前使用MCU的RAM不够,可修改
-******************************************************************************/
-#define ZIGBEE_UART_QUEUE_LMT             24  //16         //数据接收队列大小,如MCU的RAM不够,可缩小
-#define ZIGBEE_UART_RECV_BUF_LMT          24              //根据用户DP数据大小量定,必须大于24
-#define ZIGBEE_UART_SEND_BUF_LMT          24              //根据用户DP数据大小量定,必须大于24
 
-//============================================================================= 
-typedef struct
+typedef enum
 {
-    unsigned int  year;     /*年， 取值范围为实际年份减去1970*/
-    unsigned char month;    /*月， 取值范围为0-11*/
-    unsigned char day;      /*日， 取值范围为1-31*/
-    unsigned char hour;     /*时， 取值范围为0-23*/
-    unsigned char minute;   /*分， 取值范围为0-59*/
-    unsigned int second;   /*秒， 取值范围为0-59*/
-} xdata time_t;
+    MCU_TYPE_DC_POWER = 1,
+    MCU_TYPE_LOWER_POWER,
+    MCU_TYPE_SCENE
+}xdata MCU_TYPE_E;
 
-/******************************************************************************
-                      3:MCU是否需要支持zigbee功能测试                     
-如需要请开启该宏,并且mcu在需要zigbee功能测试处调用mcu_api.c文件内mcu_start_zigbee_test
-并在protocol.c文件zigbee_test_result函数内查看测试结果,
-zigbee_test_result内部有#err提示,完成函数后请删除该#err
-******************************************************************************/
-//#define         ZIGBEE_TEST_ENABLE                //开启zigbee模块产测功能
+/**
+ * if mcu need to support the time function, this macro definition should be opened
+ * and need complete mcu_write_rtctime function 
+ * 
+ */
+ 
+//#define    SUPPORT_MCU_RTC_CHECK             //start time calibration
 
-/******************************************************************************
-                          4:MCU是否需要支固件升级                  
-如需要支持MCU固件升级,请开启该宏
+/**
+ * if mcu need to support OTA, this macro definition should be opened
+ */
+#define    SUPPORT_MCU_OTA                  //support mcu ota
 
-******************************************************************************/
-//#define         SUPPORT_MCU_FIRM_UPDATE                 //开启MCU固件升级功能(默认关闭)
-#ifdef SUPPORT_MCU_FIRM_UPDATE
-  #define NOW_MCU_VER 0x41 //01.00.0000  ->1.0.0
-  #define UPDATE_MCU_VER 0x42
-#endif
-/******************************************************************************
-                        1:dp数据点序列号重新定义
-          **此为自动生成代码,如在开发平台有相关修改请重新下载MCU_SDK**         
-******************************************************************************/
+
+/**
+ * if mcu need to support mcu type checking, this macro definition should be opened
+ * 
+ */
+#define    CHECK_MCU_TYPE               //support mcu type check 
+
+
+/**
+ * if mcu need to support zigbee network parameter setting, this macro definition should be opened
+ * 
+ */
+//#define  SET_ZIGBEE_NWK_PARAMETER        //support zigbee nwk parameter setting 
+
+
+/**
+ * if mcu need to send a broadcast data, this macro definition should be opened
+ * 
+ */
+//#define  BROADCAST_DATA_SEND           //support broadcast data sending
+
+
+
+/**
+ * DP data list,this code will be generate by cloud platforms
+ */
+
 //开关(可下发可上报)
 //备注:
 #define DPID_SWITCH_LED 1
@@ -124,53 +121,112 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 #define DPID_PERSON_IN_RANGE 119
 
 
-/*****************************************************************************
-函数名称 : all_data_update
-功能描述 : 系统所有dp点信息上传
-输入参数 : 无
-返回参数 : 无
-使用说明 : MCU必须实现该函数内数据上报功能
-*****************************************************************************/
+
+/**
+* @brief encapsulates a generic send function, developer should use their own function to completing this fuction 
+* @param[in] {value} send signle data 
+* @return  void
+*/
+void uart_transmit_output(unsigned char value);
+
+/**
+* @brief Upload all dp information of the system, and realize the synchronization of APP and muc data
+* @param[in] {void}
+* @return  void
+*/
 void all_data_update(void);
 
-/*****************************************************************************
-函数名称 : mcu_write_rtctime
-功能描述 : MCU校对本地RTC时钟
-输入参数 : local_or_utc: true是local time， false是UTCtime
-返回参数 : 无
-使用说明 : MCU需要自行实现该功能
-*****************************************************************************/
-void mcu_write_rtctime(bool local_or_utc, time_t* time);
+/**
+* @brief mcu check local RTC time 
+* @param[in] {time} timestamp
+* @return  void
+*/
+void mcu_write_rtctime(unsigned char time[]);
 
-/*****************************************************************************
-函数名称 : zigbee_test_result
-功能描述 : zigbee RF功能测试反馈
-输入参数 : result:zigbee功能测试结果;0:失败/1:成功
-           rssi:测试成功表示zigbee信号强度/测试失败表示错误类型
-返回参数 : 无
-使用说明 : MCU需要自行实现该功能
-*****************************************************************************/
-void zigbee_test_result(bool result,unsigned char rssi);
+/**
+* @brief Zigbee functional test feedback
+* @param[in] {void} 
+* @return  void
+*/
+void zigbee_test_result(void);
 
-/*****************************************************************************
-函数名称 : dp_download_handle
-功能描述 : dp下发处理函数
-输入参数 : dpid:DP序号
-value:dp数据缓冲区地址
-length:dp数据长度
-返回参数 : 成功返回:SUCCESS/失败返回:ERRO
-使用说明 : 该函数用户不能修改
-*****************************************************************************/
+/**
+* @brief this function will handle uart received frame data  
+* @param[in] {dpid}   dp id
+* @param[in] {value}  dp data 
+* @param[in] {length} lenght of dp data 
+* @return  handle result 
+*/
 unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[], unsigned short length);
 
-/*****************************************************************************
-函数名称 : get_download_cmd_total
-功能描述 : 获取所有dp命令总和
-输入参数 : 无
-返回参数 : 下发命令总和
-使用说明 : 该函数用户不能修改
-*****************************************************************************/
+/**
+* @brief get received cmd total number
+* @param[in] {void}   
+* @return  received cmd total number
+*/
 unsigned char get_download_cmd_total(void);
 
+/**
+* @brief received zigbee net_work state handle 
+* @param[in] {zigbee_work_state}  zigbee current network state
+* @return  void 
+*/
+void zigbee_work_state_event(unsigned char zigbee_work_state);
+/**
+* @brief received reset zigbee response 
+* @param[in] {state} response state 
+* @return  void 
+*/
+void mcu_reset_zigbee_event(unsigned char state);
+
+/**
+* @brief check mcu version response
+* @param[in] {void}
+* @return  void 
+*/
+void response_mcu_ota_version_event(void);
+
+
+#ifdef SUPPORT_MCU_OTA 
+/**
+* @brief mcu ota update notify response
+* @param[in] {offset} offset of file 
+* @return  void 
+*/
+void response_mcu_ota_notify_event(unsigned char offset);
+/**
+* @brief received mcu ota data request response
+* @param[in] {fw_offset}  offset of file 
+* @param[in] {data}  received data  
+* @return  void 
+*/
+void reveived_mcu_ota_data_handle(unsigned int fw_offset, char *data0);
+
+/**
+* @brief mcu send ota data request 
+* @param[in] {offset} offset of file 
+* @return  void 
+*/
+void mcu_ota_fw_request_event(unsigned char offset);
+
+/**
+* @brief mcu ota data result notify
+* @param[in] {offset} offset of file 
+* @return  void 
+*/
+void mcu_ota_result_event(unsigned char offset);
+
+
+/**
+* @brief mcu ota data handle 
+* @param[in] {fw_offset} frame offset 
+* @param[in] {data} received data
+* @return  void 
+*/
+void ota_fw_data_handle(unsigned int fw_offset, char *data0);
 #endif
 
+#ifdef __cplusplus
+}
+#endif
+#endif

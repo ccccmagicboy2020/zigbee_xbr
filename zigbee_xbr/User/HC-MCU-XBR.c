@@ -57,7 +57,6 @@ u8 xdata SUM1_counter = 0; //???
 u8 xdata SUM0_num = 12;	   //???
 u8 xdata SUM1_num = 64;	   //???
 ulong xdata SUM01;
-//ulong xdata SUM2;		   //调试用
 ulong xdata SUM10 = 0;	   //SUM1值的几次平均值，时间上的滞后值
 ulong xdata SUM0 = 0;	   //
 ulong xdata SUM1 = 0;	   //平均绝对离差的累加合的瞬时值
@@ -85,8 +84,8 @@ u8 xdata LIGHT_TH;
 u16 xdata DELAY_NUM;
 u8 xdata lowlightDELAY_NUM;
 u8 xdata RXnum = 0;
-u8 while_1flag = 0;		  //伴亮完成标志
-u8 while_2flag = 0;		  //???
+u8 xdata while_1flag = 0;		  //伴亮完成标志
+u8 xdata while_2flag = 0;		  //???
 u8 xdata SWITCHflag = 0;  //暂时没有使用
 u8 xdata SWITCHflag2 = 0; //灯开关的变量，可由APP设置
 u8 xdata SWITCHfXBR = 1;  //雷达感应开关的变量，可由APP设置
@@ -97,14 +96,9 @@ u8 xdata resetbtcnt = 0;				  //为重置蓝牙模块设置的计数器
 u8 xdata XRBoffbrightvalue = 0;			  //当关闭雷达时，APP设置的亮度值
 volatile u16 xdata lowlight1mincount = 0; //timer的计数器1ms自加
 volatile u8 xdata lowlight1minflag = 0;	  //timer的分钟标志
-volatile u16 idata light1scount = 0;	  //timer的计数器1ms自加
-volatile u16 idata light1sflag = 0;		  //timer的秒标志
-//u8 xdata addr = 0;
-//u8 xdata devgroup = 0;
-//u8 xdata addrend = 0;
-//u16 idata groupaddr[8] = {0};
-//u8 xdata check_group_flag = 0;	//检查群组标志
-//u8 xdata check_group_count = 0; //检查群组计数器
+volatile u16 xdata light1scount = 0;	  //timer的计数器1ms自加
+volatile u16 xdata light1sflag = 0;		  //timer的秒标志
+
 u8 xdata Linkage_flag = 0;
 u8 xdata Light_on_flag = 0;
 u8 xdata Light_on_flagpre = 0;
@@ -124,15 +118,7 @@ u8 xdata radar_number_send_flag2 = 0;
 
 u8 xdata person_in_range_flag = 0;
 u8 xdata person_in_range_flag_last = 0;
-/*
-	 u8 idata groupaddr2 = 0;
-	 u8 idata groupaddr3 = 0;
-	 u8 idata groupaddr4 = 0;
-	 u8 idata groupaddr5 = 0;
-	 u8 idata groupaddr6 = 0;
-	 u8 idata groupaddr7 = 0;
-	 u8 idata groupaddr8 = 0;
-	 */
+
 unsigned char PWM3init(unsigned char ab);
 void Flash_EraseBlock(unsigned int fui_Address); //扇区擦除
 //void FLASH_WriteData(unsigned char fui_Address, unsigned int fuc_SaveData);//写入一个数据
@@ -141,12 +127,8 @@ void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr); //读取任意长度数据
 void savevar(void);
 
-//unsigned char guc_Write_a[5] = {0};	//写入数据
-unsigned char xdata guc_Read_a[12] = {0x00}; //用于存放读取的数据
+unsigned char idata guc_Read_a[12] = {0x00}; //用于存放读取的数据
 unsigned char xdata guc_Read_a1[2] = {0x00}; //用于存放读取的数据
-// unsigned char guc_Uartflag = 0;					  //发送标志位
-// unsigned char guc_Uartcnt = 0;					  //发送计数
-// unsigned char guc_Uartbuf_a[2] = {0x00};	//缓存数组
 
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr)
 {
