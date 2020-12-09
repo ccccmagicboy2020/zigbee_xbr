@@ -1,0 +1,60 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              11/09/2020 10:26:37 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\SoftWare\Keil\C51\BIN\C51.EXE ..\user\main.c OPTIMIZE(9,SIZE) REGFILE(.\Objects\003_ISP_NEW.ORC)
+                    - BROWSE INTVECTOR(0X3800) INCDIR(..\user;..\include) DEBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Obje
+                    -cts\main.obj)
+
+line level    source
+
+   1          #define ALLOCATE_EXTERN
+   2          #include "include.h"
+   3          unsigned char xdata Uart_Buf[200];//数据缓存数组
+   4          //与上位机的时序调整
+   5          //Earse_Flash()函数修改，增加LVD检测，每擦除前判断LVD电压
+   6          //Receive_Packet()增加LVD检测，程序结构修改，烧写错误则全擦，查空修改为查空前128个字节
+   7          //HandShake()握手时间间隔修改，看门狗打开，TXD引脚初始化靠后，RXD为施密特输入上拉（必须带上拉）BOR 2.0V，L
+             -VD 2.4V
+   8          int main(void)
+   9          {
+  10   1        SystemInit();//初始化
+  11   1        HandShake();//握手
+  12   1        while(1)
+  13   1        {
+  14   2           WDTC |= 0x10;                   //清狗
+  15   2          switch(Receive_Packet(Uart_Buf))//接收判断
+  16   2          {
+  17   3            case SUCCESS://成功发ACK
+  18   3                      Uart_SendByte(ACK);   
+  19   3                                  break;
+  20   3      
+  21   3            case ERROR://失败发NACK
+  22   3                      Uart_SendByte(NACK);
+  23   3                                  break;
+  24   3            
+  25   3            case NACK_TIME://超时跳转APP
+  26   3                        IAR_Soft_Rst_No_Option();
+  27   3                                  break;      
+  28   3            
+  29   3            default://其他不操作
+  30   3                                  break;      
+  31   3          }   
+  32   2        }
+  33   1      }
+  34          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     44    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    200    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

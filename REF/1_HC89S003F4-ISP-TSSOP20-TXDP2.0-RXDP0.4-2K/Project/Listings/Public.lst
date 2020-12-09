@@ -1,0 +1,54 @@
+C51 COMPILER V9.60.0.0   PUBLIC                                                            11/09/2020 10:26:37 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE PUBLIC
+OBJECT MODULE PLACED IN .\Objects\Public.obj
+COMPILER INVOKED BY: C:\SoftWare\Keil\C51\BIN\C51.EXE ..\user\Public.c OPTIMIZE(9,SIZE) REGFILE(.\Objects\003_ISP_NEW.OR
+                    -C) BROWSE INTVECTOR(0X3800) INCDIR(..\user;..\include) DEBUG OBJECTEXTEND PRINT(.\Listings\Public.lst) TABS(2) OBJECT(.\
+                    -Objects\Public.obj)
+
+line level    source
+
+   1          #include "include.h"
+   2          
+   3          /***************************************************************************************
+   4            * @说明   初始化函数
+   5            * @参数 无
+   6            * @返回值 无
+   7            * @注   无
+   8          ***************************************************************************************/
+   9          void SystemInit(void)
+  10          {
+  11   1      /***********************************WDT配置初始化**************************************/
+  12   1        WDTC = 0x54;            //允许WDT复位，允许掉电/空闲模式下运行，128分频
+  13   1        WDTCCR = 0xFF;          //写入00时，将关闭WDT功能（但不关闭内部低频RC），745ms  
+  14   1      /************************************系统初始化****************************************/
+  15   1        CLKSWR = 0x50;            //选择内部高频RC为系统时钟，内部高频RC 1分频，Fosc=32MHz
+  16   1        CLKDIV = 0x02;            //Fosc 2分频得到Fcpu，Fcpu=16MHz 
+  17   1        FREQ_CLK=0x10;           //设定当前系统时钟 Fcpu=16MHz  
+  18   1      /**********************************相关配置初始化**************************************/
+  19   1      //  P0M2 = 0x32;            //P04设置为上拉输入
+  20   1          P0M1 = 0x03;            //P03设置为输入
+  21   1      /**********************************TIM1配置初始化**************************************/  
+  22   1        TCON1 = 0x00;           //T1定时器时钟为Fosc,Fosc=32MHz,12分频
+  23   1        TMOD = 0x00;            //16位重装载定时器/计数器
+  24   1        TH1 = 0xF5;
+  25   1        TL1 = 0x96;             //T1定时时间1ms
+  26   1        ET1=1;
+  27   1        TR1=0;
+  28   1        LVDC &=~ 0x08;          //清除LVD中断标志位   
+  29   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     49    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,10 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj",
+".\Objects\Public.obj",
+".\Objects\Uart.obj",
+".\Objects\Modb.obj",
+".\Objects\Flash.obj" 
+TO ".\Objects\003_ISP_NEW" REGFILE (.\Objects\003_ISP_NEW.ORC) 
+PRINT(".\Listings\003_ISP_NEW.m51") RAMSIZE(256) 
+CODE( 0X3800-0X3FFF )
+XDATA( 0X00-0X00FF )

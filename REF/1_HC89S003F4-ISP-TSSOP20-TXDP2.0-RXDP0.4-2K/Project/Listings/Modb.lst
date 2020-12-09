@@ -1,0 +1,321 @@
+C51 COMPILER V9.60.0.0   MODB                                                              11/09/2020 10:26:38 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MODB
+OBJECT MODULE PLACED IN .\Objects\Modb.obj
+COMPILER INVOKED BY: C:\SoftWare\Keil\C51\BIN\C51.EXE ..\user\Modb.c OPTIMIZE(9,SIZE) REGFILE(.\Objects\003_ISP_NEW.ORC)
+                    - BROWSE INTVECTOR(0X3800) INCDIR(..\user;..\include) DEBUG OBJECTEXTEND PRINT(.\Listings\Modb.lst) TABS(2) OBJECT(.\Obje
+                    -cts\Modb.obj)
+
+line level    source
+
+   1          #include "include.h"
+   2          
+   3          
+   4          #define  Version_Order_Internal_Length   12
+   5          #define  Version_Order_OutSide_Length    10
+   6          #define  MCU_ID_Length                   10
+   7          
+   8          
+   9          unsigned char  HandShake_Count=0;
+  10          bit            Read_Flag=0;
+  11          
+  12          
+  13          unsigned char code ISP_Version_Internal_Order[]={       
+  14                                      Version_Order_Internal_Length,
+  15                                      Version,
+  16          
+  17                                      Get_Version_OutSide_Order, 
+  18                                      Get_Version_Internal_Order, 
+  19                                      Get_ID,
+  20          
+  21                                      Erase_Flash_ALL, 
+  22                                      Erase_Option, 
+  23          
+  24                                      Write_Memory,        
+  25                                      Write_Option,
+  26          
+  27                                      Read_Memory,
+  28                                      Read_Option,
+  29          
+  30                                      Go_APP,
+  31                                      Rst_Read_Option
+  32                                                 };
+  33          unsigned char  code ISP_Version_OutSide_Order[]={       
+  34                                      Version_Order_OutSide_Length,
+  35                                      Version,
+  36              
+  37                                      Get_Version_OutSide_Order,  
+  38                                      Get_ID,
+  39              
+  40                                      Erase_Flash_ALL, 
+  41                                      Erase_Option,
+  42              
+  43                                      Write_Memory,        
+  44                                      Write_Option,
+  45              
+  46                                      Read_Option,
+  47            
+  48                                      Go_APP,
+  49                                      Rst_Read_Option
+  50                                             };
+  51          
+  52          
+  53          unsigned char code MCU_ID[]={MCU_ID_Length,0x48,0x43,0x38,0x39,0x53,0x30,0x30,0x33,0x46,0x34};                      
+C51 COMPILER V9.60.0.0   MODB                                                              11/09/2020 10:26:38 PAGE 2   
+
+             -                     
+  54          
+  55          void HandShake(void)
+  56          {
+  57   1        unsigned char Data;
+  58   1      /**********************************×ÔÊÊÓ¦²¨ÌØÂÊ´®¿Ú³õÊ¼»¯**************************************/  
+  59   1        TR1=1;//¿ª¶¨Ê±Æ÷1
+  60   1        EA=1; 
+  61   1        do{ 
+  62   2          if(HandShake_Count>=20)//ÉÏµç20msÃ»ÓÐ¼ì²âµ½Êý¾Ý
+  63   2          {
+  64   3             IAR_Soft_Rst_No_Option();//Òý½ÅÃ»ÓÐ¼ì²âµ½Êý¾Ý£¬½øÈëAPP       
+  65   3          }
+  66   2        }
+  67   1      //  while(P0_4);
+  68   1      //  TR1=0;//¹Ø¶¨Ê±Æ÷T1
+  69   1      //  EA=0; 
+  70   1      //  P2M0 = 0x38;              //P20ÉèÖÃÎªÍÆÍìÊä³ö   
+  71   1      //  TXD_MAP = 0x20;           //TXDÓ³ÉäP20
+  72   1      //  RXD_MAP = 0x04;           //RXDÓ³ÉäP04
+  73   1      
+  74   1        while(P0_3);
+  75   1        TR1=0;//¹Ø¶¨Ê±Æ÷T1
+  76   1        EA=0; 
+  77   1        P2M0 = 0x83;              //P21ÉèÖÃÎªÍÆÍìÊä³ö
+  78   1        TXD_MAP = 0x21;           //TXDÓ³ÉäP21
+  79   1        RXD_MAP = 0x03;           //RXDÓ³ÉäP03  
+  80   1        
+  81   1        T4CON = 0x06;           //T4¹¤×÷Ä£Ê½£ºUART1²¨ÌØÂÊ·¢ÉúÆ÷
+  82   1        TH4 = 0xFF;
+  83   1        TL4 = 0xF8;             //²¨ÌØÂÊ250000
+  84   1        SCON2 = 0x02;           //8Î»UART£¬²¨ÌØÂÊ¿É±ä
+  85   1        SCON = 0x10;            //ÔÊÐí´®ÐÐ½ÓÊÕ
+  86   1        
+  87   1        Uart_SendByte(ACK);                 //·¢ËÍOX79
+  88   1        if(Uart_RecvByte(&Data,HandShark_TIMEOUT)!=SUCCESS) IAR_Soft_Rst_No_Option();//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈë
+             -APP  
+  89   1        if(Data!=0x7f)                                      IAR_Soft_Rst_No_Option();//Êý¾Ý²»ÊÇOX7F£¬½øÈëAPP
+  90   1          
+  91   1        Uart_SendByte(0x1f);//µÚÒ»´Î·¢ËÍ0x1f
+  92   1                
+  93   1        Data=0;
+  94   1        if(Uart_RecvByte(&Data,HandShark_TIMEOUT)!=SUCCESS) IAR_Soft_Rst_No_Option();//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈë
+             -APP  
+  95   1        if(Data!=0x7f)                                      IAR_Soft_Rst_No_Option();//Êý¾Ý²»ÊÇOX7F£¬½øÈëAPP
+  96   1      /*****************************************************************************/ 
+  97   1      
+  98   1        
+  99   1        BORC  =0xC1;        //BOR:2.0V
+ 100   1        BORDBC=0x14;        //BORÏû¶¶  Ïû¶¶Ê±¼ä = BORDBC[7:0] * 8Tcpu +2 Tcpu 
+ 101   1        
+ 102   1        LVDC = 0xA2;            //LVDÉèÖÃ2.4V,½ûÖ¹ÖÐ¶Ï
+ 103   1        LVDDBC = 0xFF;          //ÉèÖÃÏû¶¶Ê±¼ä16uS
+ 104   1        
+ 105   1        Uart_SendByte(0x1f);   //µÚ¶þ´Î·¢ËÍ0x1f 
+ 106   1        
+ 107   1      }
+ 108          
+ 109          unsigned char Receive_Packet (unsigned char *Data)
+ 110          {
+ 111   1        unsigned char i;
+ 112   1        unsigned int  TempCRC;
+C51 COMPILER V9.60.0.0   MODB                                                              11/09/2020 10:26:38 PAGE 3   
+
+ 113   1      
+ 114   1        if (Uart_RecvByte(Data,  Command_TIMEOUT)!= SUCCESS)   return NACK_TIME;//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈëAPP
+ 115   1        if (Uart_RecvByte(Data+1,Command_TIMEOUT)!= SUCCESS)   return NACK_TIME;//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈëAPP  
+             -       
+ 116   1        if (Data[0]!=((Data[1]^0xff)&0xff))                    return ERROR;    //ÑéÖ¤·´Âë
+ 117   1        
+ 118   1        switch(Data[0])
+ 119   1        {
+ 120   2      //    case Get_Version_Internal_Order://»ñÈ¡µ±Ç°°æ±¾ÒÔ¼°ÔÊÐíÊ¹ÓÃµÄÃüÁî
+ 121   2      //             Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦
+ 122   2      //             Uart_SendByte(Version_Order_Internal_Length);//·¢ËÍÓÐÐ§Êý¾Ý³¤¶È    
+ 123   2      //             Uart_SendPacket(ISP_Version_Internal_Order+1, Version_Order_Internal_Length);//·¢ËÍÓÐÐ§Êý¾Ý  
+ 124   2      //             TempCRC=CRC_CalcCRC_Process(ISP_Version_Internal_Order,Version_Order_Internal_Length+1,Data
+             -,0);//»ñÈ¡CRCÐ£ÑéÊý¾Ý 
+ 125   2      //             Uart_SendByte(TempCRC >> 8);//·¢ËÍ¸ß°ËÎ»
+ 126   2      //             Uart_SendByte(TempCRC & 0xFF);//·¢ËÍµÍ°ËÎ»
+ 127   2      //             Read_Flag=0;   
+ 128   2      //             return SUCCESS;        
+ 129   2      //                                              break;      
+ 130   2          
+ 131   2          case Get_Version_OutSide_Order://»ñÈ¡µ±Ç°°æ±¾ÒÔ¼°ÔÊÐíÊ¹ÓÃµÄÃüÁî
+ 132   2                   Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦
+ 133   2                   Uart_SendByte(Version_Order_OutSide_Length);//·¢ËÍÓÐÐ§Êý¾Ý³¤¶È   
+ 134   2                   Uart_SendPacket(ISP_Version_OutSide_Order+1, Version_Order_OutSide_Length);//·¢ËÍÓÐÐ§Êý¾Ý  
+ 135   2                   TempCRC=CRC_CalcCRC_Process(ISP_Version_OutSide_Order,Version_Order_OutSide_Length+1,Data,0);
+             -//»ñÈ¡CRCÐ£ÑéÊý¾Ý 
+ 136   2                   Uart_SendByte(TempCRC >> 8);//·¢ËÍ¸ß°ËÎ»
+ 137   2                   Uart_SendByte(TempCRC & 0xFF);//·¢ËÍµÍ°ËÎ» 
+ 138   2                   Read_Flag=1;        
+ 139   2                   return SUCCESS;        
+ 140   2                                                    break;
+ 141   2          
+ 142   2          case Get_ID:          //¶ÁÈ¡Ð¾Æ¬ÐÍºÅ
+ 143   2                   Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦
+ 144   2                   if(Read_ID()!=SUCCESS)  return ERROR;  //Ð¾Æ¬ÐÍºÅ´íÎó    
+ 145   2                   Uart_SendByte(MCU_ID_Length);//·¢ËÍÓÐÐ§Êý¾Ý³¤¶È       
+ 146   2                   Uart_SendPacket(MCU_ID+1, MCU_ID_Length);//·¢ËÍÓÐÐ§Êý¾Ý  
+ 147   2                   TempCRC=CRC_CalcCRC_Process(MCU_ID,MCU_ID_Length+1,Data,0);//»ñÈ¡CRCÐ£ÑéÊý¾Ý     
+ 148   2                   Uart_SendByte(TempCRC >> 8);//·¢ËÍ¸ß°ËÎ»
+ 149   2                   Uart_SendByte(TempCRC & 0xFF);//·¢ËÍµÍ°ËÎ»
+ 150   2                   return SUCCESS;
+ 151   2                                                    break;
+ 152   2      
+ 153   2          case Erase_Flash_ALL:    //²Á³ý Flash Êý¾Ý
+ 154   2            Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦
+ 155   2            for (i = 0; i < 2; i ++)//±£´æÒª²Á³ýµÄÉÈÇø
+ 156   2            {
+ 157   3              if (Uart_RecvByte(Data + 2 + i, NAK_TIMEOUT) != SUCCESS) return NACK_TIME;//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈë
+             -APP
+ 158   3            }
+ 159   2            if(Data[2]==0XFF&&Data[3]==0X00)//ÅÐ¶ÏÊÇ·ñÈ«ÉÈÇø²Á³ý  
+ 160   2            {
+ 161   3                  if (XOR_FLASH_BLANK(0x0000,0x2FFF)==0x00) return SUCCESS;//È«ÉÈÇø²å¿Õ£¬²Á³ý³É¹¦ 
+ 162   3                  if (LVD_Check(LVD_TIMEOUT)!=SUCCESS)      return ERROR;//µçÑ¹²»Õý³£           
+ 163   3                  if (Earse_Flash())                        return SUCCESS;//È«ÉÈÇø²Á³ý³É¹¦
+ 164   3                  else                                      return ERROR;//È«ÉÈÇø²Á³ýÊ§°Ü
+ 165   3            } 
+ 166   2            else
+ 167   2                   return ERROR;      
+ 168   2                                                    break;
+ 169   2      
+ 170   2          case Write_Memory:  //Ð´ Flash Êý¾Ý 
+C51 COMPILER V9.60.0.0   MODB                                                              11/09/2020 10:26:38 PAGE 4   
+
+ 171   2              Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦     
+ 172   2              for (i=0; i<6; i++)//½ÓÊÜÆðÊ¼µØÖ·ºÍCRCÐ£Ñé£¬´æÈëData[i+2]
+ 173   2              {
+ 174   3                if (Uart_RecvByte(Data+2+i, NAK_TIMEOUT) != SUCCESS)  return NACK_TIME;//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½øÈëAP
+             -P
+ 175   3              }
+ 176   2              if (CRC_CalcCRC_Process(Data+2,4,Data+6,1)!=SUCCESS )return ERROR;//CRCÐ£Ñé´íÎó
+ 177   2              
+ 178   2                   Uart_SendByte(ACK);          
+ 179   2      
+ 180   2              if (Uart_RecvByte(Data+8, NAK_TIMEOUT) !=SUCCESS)       return NACK_TIME;//¿ªÊ¼½ÓÊÕÊý¾Ý³¤¶È£¬´ÓData[8]
+             -¿ªÊ¼´æÆð
+ 181   2      
+ 182   2                for (i=0; i<(Data[8]+2); i++)//½ÓÊÕÊý¾ÝºÍCRCµÄÖµ
+ 183   2                {
+ 184   3                  if (Uart_RecvByte(Data+9+i, NAK_TIMEOUT) != SUCCESS)      return NACK_TIME;//³¤Ê±¼äÃ»ÓÐ½ÓÊÕµ½Êý¾Ý£¬½
+             -øÈëAPP
+ 185   3                }       
+ 186   2             if (CRC_CalcCRC_Process(Data+8,Data[8]+1,Data+Data[8]+9,1)!=SUCCESS)  return ERROR;//CRCÐ£Ñé´íÎó 
+ 187   2             if(LVD_Check(LVD_TIMEOUT)!=SUCCESS)  return ERROR;//µçÑ¹²»Õý³£
+ 188   2               IND_ADDR=0x0f;
+ 189   2               IND_DATA=0x00;
+ 190   2               IAR_Write_arrang((unsigned int)(Data[4]<<8)|(unsigned int)Data[5],Data+9,Data[8]);
+ 191   2               IAR_Read        ((unsigned int)(Data[4]<<8)|(unsigned int)Data[5],Data+9,Data[8]);                                   
+             -           
+ 192   2      
+ 193   2            if (CRC_CalcCRC_Process(Data+8,Data[8]+1,Data+Data[8]+9,1)!=SUCCESS) 
+ 194   2            {
+ 195   3                      IAR_Clear((unsigned int)(Data[4]<<8)|(unsigned int)Data[5]);//²Á³ý´íÎóÉÈÇø
+ 196   3                      return ERROR;//CRCÐ£Ñé´íÎó          
+ 197   3            }
+ 198   2            else                                                                
+ 199   2                  return SUCCESS; 
+ 200   2                                                    break;  
+ 201   2      
+ 202   2          case Go_APP:       //ÍË³ö Bootloader ·µ»Ø APP ³ÌÐò
+ 203   2            Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦
+ 204   2             IAR_Soft_Rst_No_Option();//Òý½ÅÃ»ÓÐ¼ì²âµ½Êý¾Ý£¬½øÈëAPP
+ 205   2                    return SUCCESS;     
+ 206   2                                                    break;
+ 207   2          case Rst_Read_Option:       //¸´Î»ÖØ¶ÁOption  
+ 208   2             Uart_SendByte(ACK);//½ÓÊÕÍ·Âë£¬·´Âë³É¹¦      
+ 209   2             IAR_Soft_Rst_Option();     
+ 210   2      
+ 211   2                    return SUCCESS;     
+ 212   2      
+ 213   2          default:     
+ 214   2                      return ERROR;//·¢ËÍNACK 
+ 215   2          
+ 216   2            break;
+ 217   2        
+ 218   2        }
+ 219   1      }
+ 220          
+ 221          /*************************************************************
+ 222            Function   : CRC_CalcCRC_Compare
+ 223            Description: Ð´ÈëÐèÒªÐ£ÑéµÄÊý¾Ý,¼Æ½Ï²¢·µ»Ø±È½Ï½á¹û
+ 224            Input      : *fucp_CheckArr - CRCÐ£ÑéÊý¾ÝÊ×µØÖ·   fui_CheckLen - CRCÐ£ÑéÊý¾Ý³¤¶È 
+ 225                         *CRC_Data      - ±È½ÏµÄCRCÊ×µØÖ·     CRC_Flag     - 0²»±È½Ï 1±È½Ï
+ 226            return     : none    
+ 227          *************************************************************/
+ 228          unsigned int CRC_CalcCRC_Process(unsigned char *fucp_CheckArr,unsigned int fui_CheckLen,unsigned char *CRC
+C51 COMPILER V9.60.0.0   MODB                                                              11/09/2020 10:26:38 PAGE 5   
+
+             -_Data,bit CRC_Flag)
+ 229          {
+ 230   1      
+ 231   1        CRCC = 0x01;//CRC¸´Î»£¬MSB first£¬¸´Î»³õÖµÎª0x0000   1021   
+ 232   1        while(fui_CheckLen--)CRCL = *(fucp_CheckArr++);
+ 233   1        if(CRC_Flag==1)
+ 234   1        {
+ 235   2          if((unsigned char)(CRCR>>8) ==*(CRC_Data )&& (unsigned char)(CRCR & 0xFF)==*(CRC_Data+1))//CRCÐ£Ñé¸ß°ËÎ»
+ 236   2          {
+ 237   3              return SUCCESS; //½ÓÊÕÐ´ÈëµØÖ·£¬ÓëCRCÐ£ÑéÊý¾Ý³É¹¦             
+ 238   3          }
+ 239   2          else
+ 240   2              return ERROR;//CRCÐ£ÑéÊ§°Ü    
+ 241   2        }
+ 242   1        else
+ 243   1          return CRCR;
+ 244   1        
+ 245   1      }
+ 246          /***************************************************************************************
+ 247            * @ËµÃ÷   LVD²éÑ¯º¯Êý
+ 248            * @²ÎÊý ÎÞ
+ 249            * @·µ»ØÖµ ÎÞ
+ 250            * @×¢   ÎÞ
+ 251          ***************************************************************************************/
+ 252          bit LVD_Check(unsigned long TimeOut)
+ 253          {
+ 254   1          WDTC |= 0x10;                   //Çå¹·      
+ 255   1        while(TimeOut-- > 0)
+ 256   1        {
+ 257   2          LVDC &=~ 0x08;                  //Çå³ýLVDÖÐ¶Ï±êÖ¾Î»                   
+ 258   2          if((LVDC&0x08)==0)              //ÅÐ¶ÏLVDÖÐ¶Ï±êÖ¾Î»
+ 259   2          { 
+ 260   3            return SUCCESS;//µçÑ¹Õý³£
+ 261   3          }    
+ 262   2        }
+ 263   1          return ERROR;
+ 264   1      }
+ 265          
+ 266          /***************************************************************************************
+ 267            * @ËµÃ÷   T1ÖÐ¶Ï·þÎñº¯Êý
+ 268            * @²ÎÊý ÎÞ
+ 269            * @·µ»ØÖµ ÎÞ
+ 270            * @×¢   ÎÞ
+ 271          ***************************************************************************************/
+ 272          void TIMER1_Rpt(void) interrupt TIMER1_VECTOR
+ 273          {
+ 274   1           HandShake_Count++;
+ 275   1      }
+ 276          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1021    ----
+   CONSTANT SIZE    =     35    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1      19
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

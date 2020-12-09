@@ -1,0 +1,95 @@
+C51 COMPILER V9.60.0.0   UART                                                              11/09/2020 10:26:37 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN .\Objects\Uart.obj
+COMPILER INVOKED BY: C:\SoftWare\Keil\C51\BIN\C51.EXE ..\user\Uart.c OPTIMIZE(9,SIZE) REGFILE(.\Objects\003_ISP_NEW.ORC)
+                    - BROWSE INTVECTOR(0X3800) INCDIR(..\user;..\include) DEBUG OBJECTEXTEND PRINT(.\Listings\Uart.lst) TABS(2) OBJECT(.\Obje
+                    -cts\Uart.obj)
+
+line level    source
+
+   1          #include "include.h"
+   2          
+   3          /*************************************************************
+   4            Function   : IAP_SerialSendByte 
+   5            Description: 发送一个字节
+   6            Input      : guc_Uartbuf-发送的字节      
+   7            return     : none    
+   8          *************************************************************/
+   9          void Uart_SendByte(unsigned char guc_Uartbuf)
+  10          {  
+  11   1            SCON &=~0x10;       //UART1接收使能 
+  12   1            SBUF = guc_Uartbuf;         //发送8位串口数据
+  13   1            while(!(SCON & 0x02));
+  14   1            SCON &=~ 0x02;          //清除发送中断标志位
+  15   1            SCON |= 0x10;       //UART1接收使能
+  16   1      }
+  17          
+  18          /*************************************************************
+  19            Function   : Uart_SendPacket 
+  20            Description: 发送指定长度的数据包
+  21            Input      : guc_Uartbuf-数据包地址   Length-字节长度     
+  22            return     : none    
+  23          *************************************************************/
+  24          void Uart_SendPacket(unsigned char *guc_Uartbuf, unsigned char Length)
+  25          {
+  26   1          unsigned char i;
+  27   1          i = 0;
+  28   1          while (i < Length)
+  29   1          {
+  30   2              Uart_SendByte(guc_Uartbuf[i]);
+  31   2              i++;
+  32   2          }
+  33   1      }
+  34          /*************************************************************
+  35            Function   : IAP_SerialGetByte 
+  36            Description: 接收一个字节
+  37            Input      : guc_Uartbuf-存放接收到的字节      
+  38            return     : none     
+  39          *************************************************************/
+  40          bit Uart_GetByte(unsigned char *guc_Uartbuf)
+  41          {
+  42   1        if(SCON & 0x01)           //判断接收中断标志位
+  43   1        {
+  44   2          SCON&=~0x01;                //收到数据后，清除接收标志      
+  45   2          *guc_Uartbuf = SBUF;              //转存8位串口接收数据
+  46   2          return SUCCESS;   
+  47   2        }
+  48   1            return ERROR; 
+  49   1      }
+  50          
+  51          /*************************************************************
+  52            Function   : Uart_RecvByte vv   
+  53            Description: 定时接收一个字节
+C51 COMPILER V9.60.0.0   UART                                                              11/09/2020 10:26:37 PAGE 2   
+
+  54            Input      : guc_Uartbuf-存放接收到的字节 TimeOut-超时时间         
+  55            return     : none    
+  56          *************************************************************/
+  57          bit Uart_RecvByte(unsigned char *guc_Uartbuf, unsigned long TimeOut)
+  58          {
+  59   1          WDTC |= 0x10;                   //清狗    
+  60   1        while(TimeOut-- > 0)
+  61   1        {
+  62   2          if(Uart_GetByte(guc_Uartbuf) == SUCCESS)
+  63   2          {
+  64   3            return SUCCESS;
+  65   3          }
+  66   2        }
+  67   1        return ERROR;
+  68   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    118    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      10
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
