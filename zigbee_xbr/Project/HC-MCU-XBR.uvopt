@@ -28,7 +28,7 @@
       <CLK51>32000000</CLK51>
       <OPTTT>
         <gFlags>1</gFlags>
-        <BeepAtEnd>1</BeepAtEnd>
+        <BeepAtEnd>0</BeepAtEnd>
         <RunSim>1</RunSim>
         <RunTarget>0</RunTarget>
       </OPTTT>
@@ -189,11 +189,11 @@
       <FileNumber>1</FileNumber>
       <FileType>2</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
-      <ColumnNumber>9376948</ColumnNumber>
+      <Focus>1</Focus>
+      <ColumnNumber>63902404</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>0</TopLine>
-      <CurrentLine>0</CurrentLine>
+      <CurrentLine>5</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\STARTUP.A51</PathWithFileName>
       <FilenameWithoutPath>STARTUP.A51</FilenameWithoutPath>
@@ -204,12 +204,12 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>2</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
-      <Focus>0</Focus>
-      <ColumnNumber>5</ColumnNumber>
+      <tvExp>0</tvExp>
+      <Focus>1</Focus>
+      <ColumnNumber>63902404</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>103</TopLine>
-      <CurrentLine>115</CurrentLine>
+      <TopLine>0</TopLine>
+      <CurrentLine>5</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>..\User\HC-MCU-XBR.c</PathWithFileName>
       <FilenameWithoutPath>HC-MCU-XBR.c</FilenameWithoutPath>
@@ -220,12 +220,12 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>3</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
-      <Focus>0</Focus>
-      <ColumnNumber>12</ColumnNumber>
+      <tvExp>0</tvExp>
+      <Focus>1</Focus>
+      <ColumnNumber>63902404</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>422</TopLine>
-      <CurrentLine>426</CurrentLine>
+      <TopLine>0</TopLine>
+      <CurrentLine>5</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>..\User\mcu_api.c</PathWithFileName>
       <FilenameWithoutPath>mcu_api.c</FilenameWithoutPath>
@@ -237,11 +237,11 @@
       <FileNumber>4</FileNumber>
       <FileType>1</FileType>
       <tvExp>1</tvExp>
-      <Focus>0</Focus>
-      <ColumnNumber>1</ColumnNumber>
+      <Focus>1</Focus>
+      <ColumnNumber>0</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>229</TopLine>
-      <CurrentLine>48</CurrentLine>
+      <TopLine>16</TopLine>
+      <CurrentLine>12</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>..\User\protocol.c</PathWithFileName>
       <FilenameWithoutPath>protocol.c</FilenameWithoutPath>
@@ -252,12 +252,12 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>5</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
-      <Focus>0</Focus>
-      <ColumnNumber>27</ColumnNumber>
+      <tvExp>0</tvExp>
+      <Focus>1</Focus>
+      <ColumnNumber>63902404</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>455</TopLine>
-      <CurrentLine>570</CurrentLine>
+      <TopLine>0</TopLine>
+      <CurrentLine>5</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>..\User\system.c</PathWithFileName>
       <FilenameWithoutPath>system.c</FilenameWithoutPath>

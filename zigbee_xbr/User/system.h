@@ -65,7 +65,7 @@ typedef struct
 	unsigned char    rejoin_try_times;  
 	unsigned char    app_trigger_rejoin; 
 	unsigned char    rf_send_power;  
-}nwk_parameter_t
+}idata nwk_parameter_t
 #endif
 
 ///< Byte order of frames

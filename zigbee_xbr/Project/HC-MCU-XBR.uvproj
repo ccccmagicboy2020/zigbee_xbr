@@ -75,7 +75,7 @@
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name></UserProg1Name>
+            <UserProg1Name>HEX2BIN.exe @p.hex</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
@@ -332,14 +332,14 @@
             <CSection></CSection>
             <UserSection></UserSection>
             <CodeBaseAddress>0X0000-0X3FFF</CodeBaseAddress>
-            <XDataBaseAddress>0X0000-0X07FF</XDataBaseAddress>
+            <XDataBaseAddress>0X0000-0X00FF</XDataBaseAddress>
             <PDataBaseAddress></PDataBaseAddress>
             <BitBaseAddress></BitBaseAddress>
             <DataBaseAddress></DataBaseAddress>
             <IDataBaseAddress></IDataBaseAddress>
             <Precede></Precede>
             <Stack></Stack>
-            <CodeSegmentName></CodeSegmentName>
+            <CodeSegmentName>?PR?_FLASH_WRITEDATA?HC_MCU_XBR(0X2CC0),?PR?_FLASH_ERASEBLOCK?HC_MCU_XBR(0X2D00)</CodeSegmentName>
             <XDataSegmentName></XDataSegmentName>
             <BitSegmentName></BitSegmentName>
             <DataSegmentName></DataSegmentName>

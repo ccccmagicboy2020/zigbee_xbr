@@ -121,14 +121,25 @@ u8 xdata person_in_range_flag_last = 0;
 
 unsigned char PWM3init(unsigned char ab);
 void Flash_EraseBlock(unsigned int fui_Address); //扇区擦除
-//void FLASH_WriteData(unsigned char fui_Address, unsigned int fuc_SaveData);//写入一个数据
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
-//void Flash_WriteArr(unsigned int fui_Address,unsigned char fuc_Length,unsigned char *fucp_SaveArr);//写入任意长度数据
+void Flash_WriteArr(unsigned int fui_Address,unsigned char fuc_Length,unsigned char *fucp_SaveArr);//写入任意长度数据
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr); //读取任意长度数据
 void savevar(void);
 
 unsigned char idata guc_Read_a[12] = {0x00}; //用于存放读取的数据
 unsigned char xdata guc_Read_a1[2] = {0x00}; //用于存放读取的数据
+
+#pragma disable
+void Flash_WriteArr(unsigned int fui_Address,unsigned char fuc_Length,unsigned char *fucp_SaveArr)
+{
+	unsigned char fui_i = 0;
+	EA=0;
+	for(fui_i=0;fui_i<fuc_Length;fui_i++)
+	{
+		FLASH_WriteData(*(fucp_SaveArr++), fui_Address++); 
+	}
+	EA=1;
+}
 
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr)
 {
@@ -1528,7 +1539,7 @@ void UART2_Rpt(void) interrupt UART2_VECTOR
 // {
 // 	while(Cnt--);
 // }
-
+#pragma disable
 void Flash_EraseBlock(unsigned int fui_Address)
 {
 	while (1)
@@ -1555,6 +1566,7 @@ void Flash_EraseBlock(unsigned int fui_Address)
   * @返回值 无
   * @注		  写之前必须先对操作的扇区进行擦除
   */
+#pragma disable
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address)
 {
 	while (1)
@@ -1610,6 +1622,9 @@ void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address)
 void savevar(void)
 {
 	unsigned char i;
+	
+	//EA=0;
+	
 	Flash_EraseBlock(0x2F00);
 	Delay_us_1(10000);
 

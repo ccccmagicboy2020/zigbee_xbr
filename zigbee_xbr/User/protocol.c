@@ -42,6 +42,7 @@ unsigned char PWM3init(unsigned char ab);
 void savevar(void);
 void Flash_EraseBlock(unsigned int fui_Address);//flash扇区擦除
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);//flash写入
+void Flash_WriteArr(unsigned int fui_Address,unsigned char fuc_Length,unsigned char *fucp_SaveArr);
 void Delay_us_1(uint q1);
 
 void reset_bt_module(void)
@@ -1062,9 +1063,14 @@ void response_mcu_ota_notify_event(unsigned char offset)
 void reveived_mcu_ota_data_handle(unsigned int fw_offset, char *data0)
 {
 	//#error "received frame data, should save in flash, mcu should realize this fuction, and delete this line "
-	unsigned int offset;
 	
-	offset = fw_offset;
+	//FW_SINGLE_PACKET_SIZE
+	if (fw_offset % 0x80 == 0)
+	{
+		Flash_EraseBlock(fw_offset);
+	}
+	
+	Flash_WriteArr(fw_offset, FW_SINGLE_PACKET_SIZE, data0);
 	
 	return;
 }
@@ -1173,10 +1179,7 @@ void mcu_ota_result_event(unsigned char offset)
 void ota_fw_data_handle(unsigned int fw_offset,char *data0)
 {
 	//#error "请在该函数处理固件包数据,并删除该行"
-	unsigned int offset;
-	
-	offset = fw_offset;	
-	
+	reveived_mcu_ota_data_handle(fw_offset, data0);
 	
 	return;
 }

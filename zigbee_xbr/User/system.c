@@ -38,7 +38,7 @@ static void response_mcu_type(void);
 
 
 #ifdef SET_ZIGBEE_NWK_PARAMETER
-nwk_parameter_t  nwk_paremeter;
+nwk_parameter_t idata nwk_paremeter;
 #endif
 
 
@@ -46,7 +46,7 @@ nwk_parameter_t  nwk_paremeter;
 #ifdef SET_ZIGBEE_NWK_PARAMETER
 void init_nwk_paremeter(void)
 {
-	#error "please call this fuction in main init"
+	//#error "please call this fuction in main init"
 	nwk_paremeter.fast_poll_period = 0xfffe;
 	nwk_paremeter.heart_period = 0xfffe;
 	nwk_paremeter.join_nwk_time = 0xfffe;
@@ -542,7 +542,7 @@ void zigbee_timestamp_to_time(void)
  void mcu_set_zigbee_nwk_parameter(nwk_parameter_t *Pparameter)
 {
 	unsigned short length = 0;
-	#error "please set network parameter in here, when zigbee received this message, it will start reboot"
+	//#error "please set network parameter in here, when zigbee received this message, it will start reboot"
 	 //Pparameter->app_trigger_rejoin  = 0x00;
      //Pparameter->fast_poll_period = 0x00;
 

@@ -23,7 +23,7 @@ extern "C"
 
 
 ///< mcu version 
-#define MCU_VER "1.0.1"                          
+#define MCU_VER "1.0.3"                          
  
 #define ZIGBEE_UART_QUEUE_LMT             24             // using to save data received from uart
 #define ZIGBEE_UART_RECV_BUF_LMT          24             //
@@ -55,7 +55,7 @@ typedef enum
  * if mcu need to support mcu type checking, this macro definition should be opened
  * 
  */
-#define    CHECK_MCU_TYPE               //support mcu type check 
+//#define    CHECK_MCU_TYPE               //support mcu type check 
 
 
 /**
