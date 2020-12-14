@@ -1170,22 +1170,6 @@ unsigned char PWM3init_xxx(unsigned char ab)
 {
 	float i11;
 	unsigned char j11;
-
-	if (0 == ab)
-	{
-		light_status_xxx = 1;
-		person_in_range_flag = 0;
-	}
-	else if (100 == ab)
-	{
-		light_status_xxx = 0;
-		person_in_range_flag = 1;
-	}
-	else
-	{
-		light_status_xxx = 2;
-		person_in_range_flag = 1;
-	}
 	
 	if (1 == ab)
 	{
