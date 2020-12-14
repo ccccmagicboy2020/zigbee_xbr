@@ -24,40 +24,12 @@
 #define LIGHT_TH0 255
 //30
 
-//一个检测周期为0.25秒
-//#define DELAY_NUM 20
-
-//#define LIGHT_ON P0_6=0
-//#define LIGHT_OFF P0_6=1
-
-//void Delay_2us(u16 Cnt);		//延时函数
-
-// bit Timer1_FLAG;
-// bit Time_10mS_FLAG;
-// bit Time_100mS_FLAG;
-// bit Time_200mS_FLAG;
-// bit Time_500mS_FLAG;
-// bit Time_1S_FLAG;
-// bit Time_10S_FLAG;
-// bit Time_1Min_FLAG;
-// bit Time_1H_FLAG;
-
 volatile ulong Timer_Counter = 0;
-
-//u8 Uart1_RX_Buff[10] = {0};					 //用于存放UART1接收数据
-//u8 Uart1_RX_Cnt = 0;								 //UART1接收计数
-//u8 Uart1_TX_Buff[20] = {0};					 //用于存放UART1发送数据
-//u8 Uart1_TX_Cnt = 0;								 //UART1发送计数
-
-// u16 AN1_Data = 0;
-// u16 AN7_Data = 0;
-// u8 Uart_Cnt = 0;
 
 u8 xdata SUM1_counter = 0; //???
 u8 xdata SUM0_num = 12;	   //???
 u8 xdata SUM1_num = 64;	   //???
 ulong xdata SUM01;
-//ulong xdata SUM2;		   //调试用
 ulong xdata SUM10 = 0;	   //SUM1值的几次平均值，时间上的滞后值
 ulong xdata SUM0 = 0;	   //
 ulong xdata SUM1 = 0;	   //平均绝对离差的累加合的瞬时值
@@ -78,15 +50,15 @@ uint xdata average;		  //an1的raw平均值
 u8 xdata light_ad;	//光敏实时值raw
 u8 xdata light_ad0; //光敏初始瞬时值raw
 
-u8 xdata check_sum, send_byte;
+//u8 xdata check_sum, send_byte;
 u8 xdata check_light_times = 8;	 //用于光敏检查的计数器
 u8 xdata calc_average_times = 0; //用于计算平均值的计数器
 u8 xdata LIGHT_TH;
 u16 xdata DELAY_NUM;
 u8 xdata lowlightDELAY_NUM;
 u8 xdata RXnum = 0;
-u8 while_1flag = 0;		  //伴亮完成标志
-u8 while_2flag = 0;		  //???
+u8 xdata while_1flag = 0;		  //伴亮完成标志
+u8 xdata while_2flag = 0;		  //???
 u8 xdata SWITCHflag = 0;  //暂时没有使用
 u8 xdata SWITCHflag2 = 0; //灯开关的变量，可由APP设置
 u8 xdata SWITCHfXBR = 1;  //雷达感应开关的变量，可由APP设置
@@ -97,17 +69,13 @@ u8 xdata resetbtcnt = 0;				  //为重置蓝牙模块设置的计数器
 u8 xdata XRBoffbrightvalue = 0;			  //当关闭雷达时，APP设置的亮度值
 volatile u16 xdata lowlight1mincount = 0; //timer的计数器1ms自加
 volatile u8 xdata lowlight1minflag = 0;	  //timer的分钟标志
-volatile u16 idata light1scount = 0;	  //timer的计数器1ms自加
-volatile u16 idata light1sflag = 0;		  //timer的秒标志
-//u8 xdata addr = 0;
-//u8 xdata devgroup = 0;
-//u8 xdata addrend = 0;
-//u16 idata groupaddr[8] = {0};
-//u8 xdata check_group_flag = 0;	//检查群组标志
-//u8 xdata check_group_count = 0; //检查群组计数器
+volatile u16 xdata light1scount = 0;	  //timer的计数器1ms自加
+volatile u16 xdata light1sflag = 0;		  //timer的秒标志
+
 u8 xdata Linkage_flag = 0;
 u8 xdata Light_on_flag = 0;
 u8 xdata Light_on_flagpre = 0;
+u8 xdata temper_value = 0;			//冷暖值
 
 u8 xdata zigbee_join_cnt = 0;
 u8 xdata all_day_micro_light_enable = 0;
@@ -124,15 +92,9 @@ u8 xdata radar_number_send_flag2 = 0;
 
 u8 xdata person_in_range_flag = 0;
 u8 xdata person_in_range_flag_last = 0;
-/*
-	 u8 idata groupaddr2 = 0;
-	 u8 idata groupaddr3 = 0;
-	 u8 idata groupaddr4 = 0;
-	 u8 idata groupaddr5 = 0;
-	 u8 idata groupaddr6 = 0;
-	 u8 idata groupaddr7 = 0;
-	 u8 idata groupaddr8 = 0;
-	 */
+
+unsigned char PWM0init(unsigned char ab);
+unsigned char PWM3init_xxx(unsigned char ab);
 unsigned char PWM3init(unsigned char ab);
 void Flash_EraseBlock(unsigned int fui_Address); //扇区擦除
 //void FLASH_WriteData(unsigned char fui_Address, unsigned int fuc_SaveData);//写入一个数据
@@ -349,7 +311,8 @@ void GPIO_Init()
 
 #ifdef V12
 
-	P1M0 = P1M0 & 0xF0 | 0x08; //P10设置为推挽输出
+	P1M0 = P1M0 & 0xFF | 0x88; //P10设置为推挽输出
+							   //P11设置为推挽输出
 
 	P0M0 = P0M0 & 0x0F | 0x30; //P01设置为模拟输入
 
@@ -643,11 +606,9 @@ void set_var(void)
 	SWITCHflag2 = (guc_Read_a[9]) & 0x01;
 	
 	all_day_micro_light_enable = (guc_Read_a[10]) & 0x01;
-	//	addr = guc_Read_a[7];
+	
+	temper_value = guc_Read_a[11];
 	//
-	//	devgroup = guc_Read_a[8];
-
-	//	addrend = guc_Read_a[9];
 
 	Flash_ReadArr(0X2f80, 2, guc_Read_a1); //读取地址0x2F00所在扇区
 	resetbtcnt = guc_Read_a1[0];
@@ -1164,8 +1125,48 @@ void wait2(void)
 
 	// 	Delay_ms(4);	//4ms
 }
+unsigned char PWM0init(unsigned char ab)
+{
+	float i11;
+	u16 j11;
+	
+	if (1 == ab)
+	{
+		j11 = 0;
+	}
+	else
+	{
+		i11 = ab * 511 / 100;
+		j11 = (u16)(i11 + 0.5);
+	}
+	
+	PWM0_MAP = 0x11;					//PWM0通道映射P11口
+	PWM0C = 0x01;					  	//PWM0高有效，PWM01高有效，时钟8分频 
+	
+	//独立模式下，PWM0和PWM01共用一个周期寄存器
+	//PWM0的占空比调节使用			PWM0组的占空比寄存器
+	//PWM01的占空比调节使用			PWM0组的死区寄存器
 
-unsigned char PWM3init(unsigned char ab)
+	//周期计算 	= 0x03ff / (Fosc / PWM分频系数)		（Fosc见系统时钟配置的部分）
+	//			= 0x03ff / (16000000 / 8)			
+	// 			= 1023   /2000000
+	//			= 511.5us		   		约1.955kHz
+
+	PWM0PH = 0x01;						//周期高4位设置为0x03
+	PWM0PL = 0xFF;						//周期低8位设置为0xFF
+
+	//占空比计算= 0x0155 / (Fosc / PWM分频系数)		（Fosc见系统时钟配置的部分）
+	//			= 0x0155 / (16000000 / 8)			
+	// 			= 341 	 / 2000000
+	//			= 170.5us		   占空比为 170.5/511.5 = 33.3%
+
+	PWM0DH = (u8)(j11>>8);				//PWM0高4位占空比0x01
+	PWM0DL = (u8)j11;					//PWM0低8位占空比0x55
+
+	PWM0EN = 0x0F;						//使能PWM0，工作于独立模式	
+	return 0;
+}
+unsigned char PWM3init_xxx(unsigned char ab)
 {
 	float i11;
 	unsigned char j11;
@@ -1227,6 +1228,54 @@ unsigned char PWM3init(unsigned char ab)
 
 	PWM3D = j11;  //PWM占空比设置
 	PWM3C = 0x94; //使能PWM3，关闭中断，允许输出，时钟16分频
+
+	return 0;
+}
+unsigned char PWM3init(unsigned char ab)
+{
+	u8 aa;
+	u8 bb;
+	
+	if (0 == ab)
+	{
+		light_status_xxx = 1;
+		person_in_range_flag = 0;
+	}
+	else if (100 == ab)
+	{
+		light_status_xxx = 0;
+		person_in_range_flag = 1;
+	}
+	else
+	{
+		light_status_xxx = 2;
+		person_in_range_flag = 1;
+	}
+	
+	switch (temper_value)
+	{
+		case	0:
+				aa = 0;
+				break;
+		case	1:
+				aa = ab/3;
+				break;
+		case	2:
+				aa = ab/2;
+				break;
+		case	3:
+				aa = ab*2/3;
+				break;
+		case	4:
+				aa = ab;
+				break;		
+		default:
+				break;
+	}
+				bb = ab - aa;
+				PWM0init(aa);//冷
+				PWM3init_xxx(bb);//暖
+	
 
 	return 0;
 }
@@ -1674,17 +1723,11 @@ void savevar(void)
 	FLASH_WriteData(i,0x2F00+10);
 	Delay_us_1(100);
 	
-//	i=addr;//&0xff;
-//	FLASH_WriteData(i,0X2F00+7);
-//	Delay_us_1(100);
-//	
-//	i=devgroup;//&0xff;
-//	FLASH_WriteData(i,0X2F00+8);
-//	Delay_us_1(100);
+	i=temper_value;
+	FLASH_WriteData(i,0X2F00+11);
+	Delay_us_1(100);
 
-//	i=addrend;
-//	FLASH_WriteData(i,0X2F00+9);
-//	Delay_us_1(100);
+////////////////////////////////////////////////////////
 	
 	Flash_EraseBlock(0x2F80);
 	Delay_us_1(10000);

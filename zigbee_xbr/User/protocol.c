@@ -43,21 +43,9 @@ u8 xdata cdsvalue = 0;              //感光选择值
 ulong xdata sensing_th = 0;     //雷达感应阈值，数值越大越灵敏
 extern  u8 xdata Linkage_flag;	//联动的开关的全局
 extern  u8 xdata Light_on_flag;	//
+extern u8 xdata temper_value;		//冷暖值
 
-//const char xdata led_bn_on[]={"led on"};
-//const char xdata led_bn_off[]={"led off"};
-//const char xdata radar_bn_on[]={"radar on"};
-//const char xdata radar_bn_off[]={"radar off"};
 
-//unsigned char DPID_SWITCH_LED2count = 0;
-//unsigned char DPID_SWITCH_XBRcount = 0;
-//unsigned char DPID_BRIGHT_VALUEcount = 0;
-//unsigned char DPID_CDScount = 0;
-//unsigned char DPID_PIR_DELAYcount = 0;
-//unsigned char DPID_STANDBY_TIMEcount = 0;
-//unsigned char DPID_SENSE_STRESScount = 0;
-
-extern u16 xdata groupaddr[8];
 extern u8 xdata all_day_micro_light_enable;
 extern u16 xdata radar_trig_times;
 extern u8 xdata light_status_xxx;
@@ -71,16 +59,10 @@ void savevar(void);
 void Flash_EraseBlock(unsigned int fui_Address);//flash扇区擦除
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);//flash写入
 void Delay_us_1(uint q1);
+unsigned char PWM0init(unsigned char ab);
 
 void reset_bt_module(void)
 {
-/* 	send_data(0x55);//p15，重置模块
-	send_data(0xAA);
-	send_data(0x00);
-	send_data(0x04);
-	send_data(0x00);
-	send_data(0x00);
-	send_data(0x03); */
 	mcu_network_start();
 }
 /******************************************************************************
@@ -120,6 +102,7 @@ const DOWNLOAD_CMD_S xdata download_cmd[] =
   {DPID_CLEAR_TRIGGER_NUMBER, DP_TYPE_BOOL},
   {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
   {DPID_PERSON_IN_RANGE, DP_TYPE_ENUM},
+  {DPID_TEMP_SELECT, DP_TYPE_ENUM},
 };
 
 
@@ -224,6 +207,8 @@ void all_data_update(void)
     mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times); //VALUE型数据上报;
     mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx); //枚举型数据上报;
 	mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag); //枚举型数据上报;
+	
+	mcu_dp_enum_update(DPID_TEMP_SELECT,temper_value); //枚举型数据上报;
 
 }
 
@@ -322,6 +307,7 @@ static unsigned char dp_download_bright_value_handle(const unsigned char value[]
     else
         return ERROR;
 }
+
 /*****************************************************************************
 函数名称 : dp_download_cds_handle
 功能描述 : 针对DPID_CDS的处理函数
@@ -833,7 +819,28 @@ static unsigned char dp_download_clear_trigger_number_handle(const unsigned char
   
   	return SUCCESS;
 }
-
+/*****************************************************************************
+函数名称 : dp_download_temp_select_handle
+功能描述 : 针对DPID_TEMP_SELECT的处理函数
+输入参数 : value:数据源数据
+        : length:数据长度
+返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+*****************************************************************************/
+static unsigned char dp_download_temp_select_handle(const unsigned char value[], unsigned short length)
+{
+    //示例:当前DP类型为ENUM
+    unsigned char ret;
+    
+    temper_value = mcu_get_dp_download_enum(value,length);
+    
+    //处理完DP数据后应有反馈
+    ret = mcu_dp_enum_update(DPID_TEMP_SELECT, temper_value);
+    if(ret == SUCCESS)
+        return SUCCESS;
+    else
+        return ERROR;
+}
 
 /******************************************************************************
                                 WARNING!!!                     
@@ -979,6 +986,11 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
         case DPID_CLEAR_TRIGGER_NUMBER:
             //计数清零处理函数
             ret = dp_download_clear_trigger_number_handle(value,length);
+			switchcnt = 0;
+        break;
+        case DPID_TEMP_SELECT:
+            //冷暖处理函数
+            ret = dp_download_temp_select_handle(value,length);
 			switchcnt = 0;
         break;
 
