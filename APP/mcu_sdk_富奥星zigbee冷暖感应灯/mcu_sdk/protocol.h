@@ -83,9 +83,6 @@ typedef enum
 //亮度值(可下发可上报)
 //备注:
 #define DPID_BRIGHT_VALUE 3
-//冷暖值(可下发可上报)
-//备注:
-#define DPID_TEMP_VALUE 4
 //光敏参数(可下发可上报)
 //备注:
 #define DPID_CDS 101
@@ -122,6 +119,9 @@ typedef enum
 //人状态(只上报)
 //备注:
 #define DPID_PERSON_IN_RANGE 119
+//冷暖(可下发可上报)
+//备注:色温档位
+#define DPID_TEMP_SELECT 120
 
 
 
