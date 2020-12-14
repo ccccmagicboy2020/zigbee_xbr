@@ -188,18 +188,6 @@ void all_data_update(void)
 	radius=50-radius;
 
     mcu_dp_value_update(DPID_SENSE_STRESS, radius); //VALUE型数据上报;
-
-//    mcu_dp_value_update(DPID_ADDR, 10); //VALUE型数据上报;
-//    mcu_dp_value_update(DPID_ADDREND, 11); //VALUE型数据上报;
-//    mcu_dp_value_update(DPID_GROUP, 12); //VALUE型数据上报;
-
-
-//    mcu_dp_string_update(DPID_DEBUG, "1012", 4); //STRING型数据上报;
-
-
-    //mcu_dp_bool_update(DPID_TEST_BN0,当前测试开关0); //BOOL型数据上报;
-    //mcu_dp_bool_update(DPID_TEST_BN1,当前测试开关1); //BOOL型数据上报;
-    //mcu_dp_bool_update(DPID_TEST_BN2,当前测试开关2); //BOOL型数据上报;
 	
 	mcu_dp_bool_update(DPID_SWITCH_LINKAGE,Linkage_flag); //BOOL型数据上报;
 	
@@ -833,6 +821,8 @@ static unsigned char dp_download_temp_select_handle(const unsigned char value[],
     unsigned char ret;
     
     temper_value = mcu_get_dp_download_enum(value,length);
+		
+		PWM3init(100);
     
     //处理完DP数据后应有反馈
     ret = mcu_dp_enum_update(DPID_TEMP_SELECT, temper_value);
