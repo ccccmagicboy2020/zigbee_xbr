@@ -822,6 +822,7 @@ static unsigned char dp_download_temp_select_handle(const unsigned char value[],
     
     temper_value = mcu_get_dp_download_enum(value,length);
 		
+		PWM3init(0);
 		PWM3init(100);
     
     //处理完DP数据后应有反馈

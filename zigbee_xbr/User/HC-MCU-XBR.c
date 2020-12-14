@@ -93,6 +93,8 @@ u8 xdata radar_number_send_flag2 = 0;
 u8 xdata person_in_range_flag = 0;
 u8 xdata person_in_range_flag_last = 0;
 
+u8 idata ab_last = 0;
+
 unsigned char PWM0init(unsigned char ab);
 unsigned char PWM3init_xxx(unsigned char ab);
 unsigned char PWM3init(unsigned char ab);
@@ -1220,6 +1222,15 @@ unsigned char PWM3init(unsigned char ab)
 	u8 aa;
 	u8 bb;
 	
+	if (ab_last == ab)
+	{
+		return 0;
+	}
+	else
+	{
+		ab_last = ab;
+	}
+	
 	if (0 == ab)
 	{
 		light_status_xxx = 1;
@@ -1256,11 +1267,11 @@ unsigned char PWM3init(unsigned char ab)
 		default:
 				break;
 	}
-				bb = ab - aa;
-				PWM0init(aa);//¿‰
-				PWM3init_xxx(bb);//≈Ø
 	
-
+	bb = ab - aa;
+	PWM0init(aa);//¿‰
+	PWM3init_xxx(bb);//≈Ø
+	
 	return 0;
 }
 
