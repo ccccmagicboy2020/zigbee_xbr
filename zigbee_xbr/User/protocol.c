@@ -50,6 +50,7 @@ extern u8 xdata all_day_micro_light_enable;
 extern u16 xdata radar_trig_times;
 extern u8 xdata light_status_xxx;
 extern u8 xdata person_in_range_flag;
+extern u8 idata Exit_network_controlflag;
 
 //extern TYPE_BUFFER_S FlashBuffer;
 void send_data(u8 d);
@@ -64,6 +65,7 @@ unsigned char PWM0init(unsigned char ab);
 void reset_bt_module(void)
 {
 	mcu_network_start();
+	Exit_network_controlflag = 1;
 }
 /******************************************************************************
                                 移植须知:
@@ -925,7 +927,7 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
 				if(switchcnt>=5)
 				{
 					switchcnt = 0;
-                    reset_bt_module();
+          reset_bt_module();
 				}
 			}
         break;

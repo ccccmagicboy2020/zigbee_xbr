@@ -8,6 +8,7 @@
 #include "HC89S003F4.h"
 #include "zigbee.h"
 
+extern u8 idata Exit_network_controlflag;
 
 void savevar(void);
 extern const DOWNLOAD_CMD_S xdata download_cmd[];
@@ -700,11 +701,13 @@ ZIGBEE_STATE_E get_zigbee_state(void)
 				{
 					//mcu_network_start();
 					//mcu_reset_zigbee();
+					Exit_network_controlflag = 1;
 				}
 				else if (ZIGBEE_STATE_JOINED == current_state)
 				{
 					all_data_update();
 					savevar();
+					Exit_network_controlflag = 0;
 				}
             }
             break;

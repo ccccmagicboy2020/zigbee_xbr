@@ -94,6 +94,8 @@ u8 xdata person_in_range_flag = 0;
 u8 xdata person_in_range_flag_last = 0;
 
 u8 idata ab_last = 0;
+volatile u8 idata Exit_network_controlflag = 0;
+u16 xdata Exit_network_controlflag_toggle_counter = 0;
 
 unsigned char PWM0init(unsigned char ab);
 unsigned char PWM3init_xxx(unsigned char ab);
@@ -104,6 +106,7 @@ void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
 //void Flash_WriteArr(unsigned int fui_Address,unsigned char fuc_Length,unsigned char *fucp_SaveArr);//写入任意长度数据
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr); //读取任意长度数据
 void savevar(void);
+void reset_bt_module(void);
 
 //unsigned char guc_Write_a[5] = {0};	//写入数据
 unsigned char xdata guc_Read_a[12] = {0x00}; //用于存放读取的数据
@@ -618,7 +621,7 @@ void set_var(void)
 	savevar();
 	if (0 == zigbee_join_cnt)
 	{
-		mcu_network_start();
+		reset_bt_module();
 	}
 }
 
@@ -1275,8 +1278,6 @@ unsigned char PWM3init(unsigned char ab)
 	return 0;
 }
 
-void reset_bt_module(void);
-
 /***************************************************************************************
   * @说明  	主函数
   *	@参数	  无
@@ -1358,6 +1359,19 @@ void main()
 		{
 			resetbtcnt = 0;
 			reset_bt_module();
+		}
+		
+		if (Exit_network_controlflag)
+		{
+			PWM3init(100);
+			Delay_ms(100);
+			PWM3init(0);
+			Delay_ms(100);
+			Exit_network_controlflag_toggle_counter++;
+			if (300 <= Exit_network_controlflag_toggle_counter)	//1 min toggle led
+			{
+				Exit_network_controlflag = 0;
+			}
 		}
 		
 		// if (1 == check_group_flag)
@@ -1726,9 +1740,9 @@ void savevar(void)
 	
 	Flash_EraseBlock(0x2F80);
 	Delay_us_1(10000);
-	FLASH_WriteData(0,0x2F80+0);
+	FLASH_WriteData(0,0x2F80+0);//clear resetbtcnt
 	
-	FLASH_WriteData(1,0x2F80+1);
+	FLASH_WriteData(1,0x2F80+1);//clear join count
 	
 	EA=1;				//-20200927
 
