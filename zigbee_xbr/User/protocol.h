@@ -122,9 +122,9 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //人状态(只上报)
 //备注:
 #define DPID_PERSON_IN_RANGE 119
-//冷暖(可下发可上报)
-//备注:色温档位
-#define DPID_TEMP_SELECT 120
+//冷暖值(可下发可上报)
+//备注:
+#define DPID_TEMP_VALUE2 150
 
 /*****************************************************************************
 函数名称 : all_data_update

@@ -305,6 +305,8 @@ void GPIO_Init()
 
 	P1M0 = P1M0 & 0xFF | 0x88; //P10设置为推挽输出
 							   //P11设置为推挽输出
+							   
+							   
 
 	P0M0 = P0M0 & 0x0F | 0x30; //P01设置为模拟输入
 
@@ -445,10 +447,23 @@ void set_var(void)
 	Flash_ReadArr(USER_PARAMETER_START_SECTOR_ADDRESS1, 2, guc_Read_a1); //
 	resetbtcnt = guc_Read_a1[0];
 	zigbee_join_cnt = guc_Read_a1[1];
-	savevar();
+	
+	Flash_EraseBlock(USER_PARAMETER_START_SECTOR_ADDRESS1);	
+	Delay_us(10000);
+	
+	resetbtcnt++;
+	
+	FLASH_WriteData(resetbtcnt, USER_PARAMETER_START_SECTOR_ADDRESS1 + 0);
+	Delay_us(100);	
+
 	if (0 == zigbee_join_cnt)
 	{
 		reset_bt_module();
+	}
+	else if (1 == zigbee_join_cnt)
+	{
+		FLASH_WriteData(zigbee_join_cnt, USER_PARAMETER_START_SECTOR_ADDRESS1 + 1);
+		Delay_us(100);		
 	}
 }
 
@@ -1106,26 +1121,7 @@ unsigned char PWM3init(unsigned char ab)
 		person_in_range_flag = 0;
 	}
 	
-	switch (temper_value)
-	{
-		case	0:
-				aa = 0;
-				break;
-		case	1:
-				aa = ab/3;
-				break;
-		case	2:
-				aa = ab/2;
-				break;
-		case	3:
-				aa = ab*2/3;
-				break;
-		case	4:
-				aa = ab;
-				break;		
-		default:
-				break;
-	}
+	aa = (u8)(temper_value*ab/100 + 0.5);
 	
 	bb = ab - aa;
 	PWM0init(bb);//冷
@@ -1186,14 +1182,7 @@ void main()
 	EA = 0;
 	set_var(); //从flash读取出变量
 	
-	PWM3init(100);	
-
-	resetbtcnt++;
-
-	Flash_EraseBlock(USER_PARAMETER_START_SECTOR_ADDRESS1);
-	Delay_us(10000);
-	FLASH_WriteData(resetbtcnt, USER_PARAMETER_START_SECTOR_ADDRESS1);
-	Delay_us(100);
+	PWM3init(100);
 
 	EA = 1;
 
@@ -1211,7 +1200,7 @@ void main()
 	SUM = 0;
 	while (1)
 	{
-		if (resetbtcnt >= 3)	//行为是每三次上电会复位一次蓝牙模块
+		if (resetbtcnt > 3)
 		{
 			resetbtcnt = 0;
 			reset_bt_module();
@@ -1558,7 +1547,7 @@ void savevar(void)
 	Flash_EraseBlock(USER_PARAMETER_START_SECTOR_ADDRESS1);
 	Delay_us(10000);
 	FLASH_WriteData(0, USER_PARAMETER_START_SECTOR_ADDRESS1+0);//clear resetbtcnt
-	FLASH_WriteData(1,USER_PARAMETER_START_SECTOR_ADDRESS1+1);//clear join count
+	FLASH_WriteData(1, USER_PARAMETER_START_SECTOR_ADDRESS1+1);//clear join count
 	
 	EA=1;				//-20200927
 
