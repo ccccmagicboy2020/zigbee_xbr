@@ -58,7 +58,9 @@
 #define         MCU_OTA_DATA_REQ_CMD            0x0D                            //OTA 固件内容请求
 #define         MCU_OTA_END_CMD                 0x0E                            //OTA 结果上报
 #define         TIME_GET_CMD                    0x24                            //zigbee模块时间同步
-
+//=============================================================================
+#define			USER_DEFINE_CMD0				0xB0
+#define			USER_DEFINE_CMD1				0xB1
 //=============================================================================
 #define SERIAL_PROTOCOL_VER          0x02                                            //协议版本号
 #define PROTOCOL_HEAD                0x09                                            //固定协议头长度
@@ -145,5 +147,8 @@ unsigned char Queue_Read_Byte(void);
 void data_handle(unsigned short offset);
 void seq_num_set(unsigned short seq_num);
 unsigned short seq_num_get(void);
+
+void cmd0(void);
+void cmd1(void);
 
 #endif

@@ -8,13 +8,15 @@
 #include "HC89S003F4.h"
 #include "zigbee.h"
 
+extern ulong xdata SUM0;	   //
+extern ulong xdata SUM1;	   //
+extern uint xdata average;	//
+extern u8 xdata light_ad;		//
 
 void savevar(void);
 extern const DOWNLOAD_CMD_S xdata download_cmd[];
 
-
 static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
-
 
 #ifdef SUPPORT_MCU_FIRM_UPDATE
      unsigned char x=0;
@@ -23,6 +25,29 @@ static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 	 unsigned char DATA[64];
 	 unsigned int IMAGE_OFFSET=0;
 #endif
+
+static void cmd0(void)
+{
+    unsigned char length = 0;
+
+	length = set_zigbee_uart_byte(length, average >> 4);
+	length = set_zigbee_uart_byte(length, light_ad);
+	length = set_zigbee_uart_byte(length, SUM0 >> 16);
+	length = set_zigbee_uart_byte(length, SUM0 >> 8);
+	length = set_zigbee_uart_byte(length, SUM1 >> 16);
+	length = set_zigbee_uart_byte(length, SUM1 >> 8);
+
+    zigbee_uart_write_frame(USER_DEFINE_CMD0, length);
+}
+
+static void cmd1(void)
+{
+    unsigned char length = 0;
+
+    //length = set_zigbee_uart_buffer(length,(unsigned char *)"{\"p\":\"",my_strlen((unsigned char *)"{\"p\":\""));
+
+    zigbee_uart_write_frame(USER_DEFINE_CMD1, length);
+}
 
 static volatile unsigned short xdata global_seq_num;
 /*****************************************************************************
@@ -686,6 +711,14 @@ ZIGBEE_STATE_E get_zigbee_state(void)
     
     switch(cmd_type)
     {
+		case USER_DEFINE_CMD0:
+			//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
+			cmd0();
+			break;
+		case USER_DEFINE_CMD1:
+			//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
+			cmd1();
+			break;
         case PRODUCT_INFO_CMD:
             product_info_cmd_handle();
             break;
