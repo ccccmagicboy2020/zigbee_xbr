@@ -9,7 +9,7 @@
 #include "zigbee.h"
 
 extern ulong xdata SUM0;	   //
-extern ulong xdata SUM1;	   //
+extern ulong xdata SUM2;		//
 extern uint xdata average;	//
 extern u8 xdata light_ad;		//
 
@@ -30,12 +30,12 @@ static void cmd0(void)
 {
     unsigned char length = 0;
 
-	length = set_zigbee_uart_byte(length, average >> 4);
-	length = set_zigbee_uart_byte(length, light_ad);
-	length = set_zigbee_uart_byte(length, SUM0 >> 16);
-	length = set_zigbee_uart_byte(length, SUM0 >> 8);
-	length = set_zigbee_uart_byte(length, SUM1 >> 16);
-	length = set_zigbee_uart_byte(length, SUM1 >> 8);
+		length = set_zigbee_uart_byte(length, average >> 4);
+		length = set_zigbee_uart_byte(length, light_ad);
+		length = set_zigbee_uart_byte(length, SUM0 >> 16);
+		length = set_zigbee_uart_byte(length, SUM0 >> 8);
+		length = set_zigbee_uart_byte(length, SUM2 >> 16);
+		length = set_zigbee_uart_byte(length, SUM2 >> 8);
 
     zigbee_uart_write_frame(USER_DEFINE_CMD0, length);
 }

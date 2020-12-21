@@ -35,6 +35,7 @@ ulong xdata SUM01;
 ulong xdata SUM10 = 0;	   //SUM1值的几次平均值，时间上的滞后值
 ulong xdata SUM0 = 0;	   //
 ulong xdata SUM1 = 0;	   //平均绝对离差的累加合的瞬时值
+ulong xdata SUM2 = 0;			//snapshot of SUM1
 ulong xdata ALL_SUM1 = 0;  //SUM1的累加值
 ulong xdata SUM16 = 0;	   //2^16次的累计值变量
 ulong xdata SUM = 0;	   //an1的raw累加值
@@ -795,6 +796,7 @@ void XBRHandle(void)
 				}
 			}
 			
+			SUM2 = SUM1;		//snapshot the SUM1
 ///////////////////////////////////////////////////
 //			send_data(average >> 4);
 //			send_data(light_ad);
