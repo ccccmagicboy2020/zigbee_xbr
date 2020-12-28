@@ -1128,30 +1128,29 @@ void main()
 
 	SUM = 0;
 	
+	if (resetbtcnt > 3)
+	{
+		resetbtcnt = 0;
+		reset_bt_module();
+	}
+	else
+	{
+		savevar();
+	}
+	
 	while (1)
 	{
-		if (resetbtcnt > 3)
+		if (light_status_xxx != light_status_xxx_last)
 		{
-			resetbtcnt = 0;
-			reset_bt_module();
+			mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
+			light_status_xxx_last = light_status_xxx;
 		}
 		
-		// if (1 == check_group_flag)
-		// {
-			// check_group_flag = 0;
-			if (light_status_xxx != light_status_xxx_last)
-			{
-				mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
-				light_status_xxx_last = light_status_xxx;
-			}
-			
-			if (person_in_range_flag != person_in_range_flag_last)
-			{
-				mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag);
-				person_in_range_flag_last = person_in_range_flag;
-			}			
-
-		// }
+		if (person_in_range_flag != person_in_range_flag_last)
+		{
+			mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag);
+			person_in_range_flag_last = person_in_range_flag;
+		}
 		
 		if (1 == radar_number_send_flag)
 		{

@@ -59,6 +59,7 @@
 #define         MCU_OTA_END_CMD                 0x0E                            //OTA 结果上报
 #define         TIME_GET_CMD                    0x24                            //zigbee模块时间同步
 //=============================================================================
+#define			GET_ZIGBEE_NETWORK_STATE_CMD	0x20
 #define			USER_DEFINE_CMD0				0xB0
 #define			USER_DEFINE_CMD1				0xB1
 //=============================================================================
@@ -150,5 +151,6 @@ unsigned short seq_num_get(void);
 
 void cmd0(void);
 void cmd1(void);
+void get_zigbee_network_state(void);
 
 #endif

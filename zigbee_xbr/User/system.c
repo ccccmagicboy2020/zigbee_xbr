@@ -26,6 +26,12 @@ static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 	 unsigned int IMAGE_OFFSET=0;
 #endif
 
+static void get_zigbee_network_state(void)
+{
+    unsigned char length = 0;
+    zigbee_uart_write_frame(GET_ZIGBEE_NETWORK_STATE_CMD, length);
+}
+
 static void cmd0(void)
 {
     unsigned char length = 0;
@@ -676,6 +682,14 @@ static void zigbee_time_get_handle(unsigned char* data0, unsigned char data_len)
 void set_zigbee_state(ZIGBEE_STATE_E state)
 {
     zigbee_state = state;
+	if (ZIGBEE_STATE_NOT_JOIN == zigbee_state)
+	{
+	}
+	else if (ZIGBEE_STATE_JOINED == zigbee_state)
+	{
+		all_data_update();
+		savevar();
+	}
 }
 
 
@@ -711,6 +725,12 @@ ZIGBEE_STATE_E get_zigbee_state(void)
     
     switch(cmd_type)
     {
+		case GET_ZIGBEE_NETWORK_STATE_CMD:
+            {
+                ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
+                set_zigbee_state(current_state);
+            }
+			break;
 		case USER_DEFINE_CMD0:
 			//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
 			cmd0();
@@ -728,17 +748,6 @@ ZIGBEE_STATE_E get_zigbee_state(void)
                 ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
                 set_zigbee_state(current_state);
                 zigbee_state_cmd_handle(current_state);
-				
-				if (ZIGBEE_STATE_NOT_JOIN == current_state)
-				{
-					//mcu_network_start();
-					//mcu_reset_zigbee();
-				}
-				else if (ZIGBEE_STATE_JOINED == current_state)
-				{
-					all_data_update();
-					savevar();
-				}
             }
             break;
 
