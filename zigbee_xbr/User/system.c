@@ -10,6 +10,7 @@
 
 extern ulong xdata SUM0;	   //
 extern ulong xdata SUM2;		//
+extern ulong xdata TH;		//
 extern uint xdata average;	//
 extern u8 xdata light_ad;		//
 
@@ -42,6 +43,8 @@ static void cmd0(void)
 		length = set_zigbee_uart_byte(length, SUM0 >> 8);
 		length = set_zigbee_uart_byte(length, SUM2 >> 16);
 		length = set_zigbee_uart_byte(length, SUM2 >> 8);
+		length = set_zigbee_uart_byte(length, TH >> 16);
+		length = set_zigbee_uart_byte(length, TH >> 8);		
 
     zigbee_uart_write_frame(USER_DEFINE_CMD0, length);
 }
