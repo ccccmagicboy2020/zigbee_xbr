@@ -3,6 +3,7 @@ import asyncio
 from struct import *
 import csv
 import time
+import json
 
 async def main_co():
     global packet1
@@ -71,7 +72,18 @@ def main():
     global packet1
     global packet2
     
-    ser=serial.Serial("com6", 9600, timeout=0.5)
+    # parameter_default = {
+                # "COM": "com6",
+                # "bitrate": 9600,
+                # "timeout": 0.5,
+                    # }
+    
+    with open('test.json', 'r') as f:
+        parameter = json.load(f)
+        #json.dump(parameter_default, f)
+        print(parameter)
+    
+    ser=serial.Serial(parameter['COM'], parameter['bitrate'], timeout=parameter['timeout'])
     print(ser.port)
 
     ser.close()
