@@ -58,7 +58,6 @@ u8 xdata calc_average_times = 0; //用于计算平均值的计数器
 u8 xdata LIGHT_TH;
 u16 xdata DELAY_NUM;
 u8 xdata lowlightDELAY_NUM;
-u8 xdata RXnum = 0;
 u8 while_1flag = 0;		  //伴亮完成标志
 u8 while_2flag = 0;		  //???
 
