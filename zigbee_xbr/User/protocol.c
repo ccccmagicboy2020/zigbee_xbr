@@ -29,7 +29,6 @@
 
 
 extern u8 xdata switchcnt;      //复位模块点击次数计数
-extern u8 xdata reset_bt_bn;    //复位模块的全局变量
 extern u8 xdata SWITCHflag2;   //开关灯的变量
 extern u8 xdata SWITCHfXBR;    //开关雷达的变量
 extern u8 xdata lightvalue;    //灯亮值
@@ -166,7 +165,7 @@ void all_data_update(void)
   //#error "请在此处理可下发可上报数据及只上报数据示例,处理完成后删除该行"
   //此代码为平台自动生成，请按照实际数据修改每个可下发可上报函数和只上报函数
 	
-    mcu_dp_bool_update(DPID_SWITCH_LED, reset_bt_bn); //复位模块
+    mcu_dp_bool_update(DPID_SWITCH_LED, 1); //复位模块
     mcu_dp_bool_update(DPID_SWITCH_LED2, SWITCHflag2); //灯的开关
     mcu_dp_value_update(DPID_BRIGHT_VALUE, lightvalue); //VALUE型数据上报;
 
@@ -224,11 +223,10 @@ static unsigned char dp_download_switch_led_handle(const unsigned char value[], 
     
     switch_led = mcu_get_dp_download_bool(value,length);
 
-    reset_bt_bn = switch_led;
   
     
     //处理完DP数据后应有反馈
-    ret = mcu_dp_bool_update(DPID_SWITCH_LED, reset_bt_bn);
+    ret = mcu_dp_bool_update(DPID_SWITCH_LED, 1);
     if(ret == SUCCESS)
         return SUCCESS;
     else
