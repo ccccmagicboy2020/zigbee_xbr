@@ -8,6 +8,11 @@
 #include "HC89S003F4.h"
 #include "zigbee.h"
 
+extern ulong xdata SUM0;	   //
+extern ulong xdata SUM2;		//
+extern ulong xdata TH;		//
+extern uint xdata average;	//
+extern u8 xdata light_ad;		//
 extern u8 idata Exit_network_controlflag;
 
 void savevar(void);
@@ -24,6 +29,29 @@ static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 	 unsigned char DATA[64];
 	 unsigned int IMAGE_OFFSET=0;
 #endif
+static void get_zigbee_network_state(void)
+{
+    unsigned char length = 0;
+    zigbee_uart_write_frame(GET_ZIGBEE_NETWORK_STATE_CMD, length);
+}
+static void cmd0(void)
+{
+    unsigned char length = 0;
+		length = set_zigbee_uart_byte(length, average >> 4);
+		length = set_zigbee_uart_byte(length, light_ad);
+		length = set_zigbee_uart_byte(length, SUM0 >> 16);
+		length = set_zigbee_uart_byte(length, SUM0 >> 8);
+		length = set_zigbee_uart_byte(length, SUM2 >> 16);
+		length = set_zigbee_uart_byte(length, SUM2 >> 8);
+		length = set_zigbee_uart_byte(length, TH >> 16);
+		length = set_zigbee_uart_byte(length, TH >> 8);		
+    zigbee_uart_write_frame(USER_DEFINE_CMD0, length);
+}
+static void cmd1(void)
+{
+    unsigned char length = 0;
+    zigbee_uart_write_frame(USER_DEFINE_CMD1, length);
+}
 
 static volatile unsigned short xdata global_seq_num;
 /*****************************************************************************
@@ -652,6 +680,16 @@ static void zigbee_time_get_handle(unsigned char* data0, unsigned char data_len)
 void set_zigbee_state(ZIGBEE_STATE_E state)
 {
     zigbee_state = state;
+	if (ZIGBEE_STATE_NOT_JOIN == zigbee_state)
+	{
+		Exit_network_controlflag = 1;
+	}
+	else if (ZIGBEE_STATE_JOINED == zigbee_state)
+	{
+		all_data_update();
+		savevar();
+		Exit_network_controlflag = 0;
+	}
 }
 
 
@@ -687,6 +725,18 @@ ZIGBEE_STATE_E get_zigbee_state(void)
     
     switch(cmd_type)
     {
+		case GET_ZIGBEE_NETWORK_STATE_CMD:
+            {
+                ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
+                set_zigbee_state(current_state);
+            }
+			break;
+		case USER_DEFINE_CMD0:
+			cmd0();
+			break;
+		case USER_DEFINE_CMD1:
+			cmd1();
+			break;
         case PRODUCT_INFO_CMD:
             product_info_cmd_handle();
             break;
@@ -697,18 +747,8 @@ ZIGBEE_STATE_E get_zigbee_state(void)
                 set_zigbee_state(current_state);
                 zigbee_state_cmd_handle(current_state);
 				
-				if (ZIGBEE_STATE_NOT_JOIN == current_state)
-				{
 					//mcu_network_start();
 					//mcu_reset_zigbee();
-					Exit_network_controlflag = 1;
-				}
-				else if (ZIGBEE_STATE_JOINED == current_state)
-				{
-					all_data_update();
-					savevar();
-					Exit_network_controlflag = 0;
-				}
             }
             break;
 

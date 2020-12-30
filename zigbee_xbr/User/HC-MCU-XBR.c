@@ -33,6 +33,7 @@ ulong xdata SUM01;
 ulong xdata SUM10 = 0;	   //SUM1值的几次平均值，时间上的滞后值
 ulong xdata SUM0 = 0;	   //
 ulong xdata SUM1 = 0;	   //平均绝对离差的累加合的瞬时值
+ulong xdata SUM2 = 0;			//snapshot of SUM1
 ulong xdata ALL_SUM1 = 0;  //SUM1的累加值
 ulong xdata SUM16 = 0;	   //2^16次的累计值变量
 ulong xdata SUM = 0;	   //an1的raw累加值
@@ -55,9 +56,8 @@ u8 xdata calc_average_times = 0; //用于计算平均值的计数器
 u8 xdata LIGHT_TH;
 u16 xdata DELAY_NUM;
 u8 xdata lowlightDELAY_NUM;
-u8 xdata RXnum = 0;
-u8 xdata while_1flag = 0;		  //伴亮完成标志
-u8 xdata while_2flag = 0;		  //???
+u8 while_1flag = 0;		  //伴亮完成标志
+u8 while_2flag = 0;		  //???
 
 u8 xdata SWITCHflag2 = 0; //灯开关的变量，可由APP设置
 u8 xdata SWITCHfXBR = 1;  //雷达感应开关的变量，可由APP设置
@@ -68,8 +68,8 @@ u8 xdata resetbtcnt = 0;				  //为重置蓝牙模块设置的计数器
 u8 xdata XRBoffbrightvalue = 0;			  //当关闭雷达时，APP设置的亮度值
 volatile u16 xdata lowlight1mincount = 0; //timer的计数器1ms自加
 volatile u8 xdata lowlight1minflag = 0;	  //timer的分钟标志
-volatile u16 xdata light1scount = 0;	  //timer的计数器1ms自加
-volatile u16 xdata light1sflag = 0;		  //timer的秒标志
+volatile u16 idata light1scount = 0;	  //timer的计数器1ms自加
+volatile u16 idata light1sflag = 0;		  //timer的秒标志
 
 u8 xdata Linkage_flag = 0;
 u8 xdata Light_on_flag = 0;
@@ -797,6 +797,7 @@ void XBRHandle(void)
 				}
 			}
 			
+			SUM2 = SUM1;		//snapshot the SUM1
 ///////////////////////////////////////////////////
 //			send_data(average >> 4);
 //			send_data(light_ad);
@@ -1198,14 +1199,19 @@ void main()
 	wait2();
 
 	SUM = 0;
-	while (1)
+	
+	if (resetbtcnt > 3)
 	{
-		if (resetbtcnt > 3)
-		{
-			resetbtcnt = 0;
-			reset_bt_module();
-		}
+		resetbtcnt = 0;
+		reset_bt_module();
+	}
+	else
+	{
+		savevar();
+	}
 		
+	while (1)
+	{		
 		if (Exit_network_controlflag)
 		{
 			PWM3init(100);
