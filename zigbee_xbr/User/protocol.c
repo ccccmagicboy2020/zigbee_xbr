@@ -747,7 +747,7 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
 				if(switchcnt>=5)
 				{
 					switchcnt = 0;
-          reset_bt_module();
+					//reset_bt_module();
 				}
 			}
         break;

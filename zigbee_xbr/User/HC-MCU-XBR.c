@@ -1219,10 +1219,10 @@ void main()
 			PWM3init(0);
 			Delay_ms(100);
 			Exit_network_controlflag_toggle_counter++;
-			if (300 <= Exit_network_controlflag_toggle_counter)	//1 min toggle led
-			{
-				Exit_network_controlflag = 0;
-			}
+			// if (300 <= Exit_network_controlflag_toggle_counter)	//1 min toggle led
+			// {
+				// Exit_network_controlflag = 0;
+			// }
 		}
 		
 		if (light_status_xxx != light_status_xxx_last)
