@@ -32,7 +32,7 @@
 输入参数 : Value_H:高字节/Value_L:低字节
 返回参数 : bcd_value:转换完成后数据
 *****************************************************************************/
-unsigned char hex_to_bcd(unsigned char Value_H,unsigned char Value_L);
+//unsigned char hex_to_bcd(unsigned char Value_H,unsigned char Value_L);
 /*****************************************************************************
 函数名称 : my_strlen
 功能描述 : 求字符串长度
@@ -65,7 +65,7 @@ void *my_memcpy(void *dest, const void *src, unsigned short count);
            src:源地址
 返回参数 : 数据处理完后的源地址
 *****************************************************************************/
-char *my_strcpy(char *dest, const char *src);
+//char *my_strcpy(char *dest, const char *src);
 
 /*****************************************************************************
 函数名称 : my_strcmp
@@ -74,7 +74,7 @@ char *my_strcpy(char *dest, const char *src);
            s2:字符串2
 返回参数 : 大小比较值，0:s1=s2; -1:s1<s2; 1:s1>s2
 *****************************************************************************/
-int my_strcmp(char *s1 , char *s2);
+//int my_strcmp(char *s1 , char *s2);
 
 /*****************************************************************************
 函数名称 : int_to_byte
@@ -82,7 +82,7 @@ int my_strcmp(char *s1 , char *s2);
 输入参数 : number:4字节原数据;value:处理完成后4字节数据
 返回参数 :无
 ****************************************************************************/
-void int_to_byte(unsigned long number,unsigned char value[4]);
+//void int_to_byte(unsigned long number,unsigned char value[4]);
 
 /*****************************************************************************
 函数名称 : byte_to_int
@@ -99,7 +99,7 @@ unsigned long byte_to_int(const unsigned char value[4]);
 返回参数 : 无
 使用说明 : 无
 *****************************************************************************/
-void mcu_reset_zigbee(void);
+//void mcu_reset_zigbee(void);
 
 /*****************************************************************************
 函数名称 : mcu_network_start
@@ -118,7 +118,7 @@ void mcu_network_start(void);
            len:数据长度
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_raw_update(unsigned char dpid,const unsigned char value[],unsigned short len);
+//unsigned char mcu_dp_raw_update(unsigned char dpid,const unsigned char value[],unsigned short len);
 
 /*****************************************************************************
 函数名称 : mcu_dp_bool_update
@@ -146,7 +146,7 @@ unsigned char mcu_dp_value_update(unsigned char dpid,unsigned long value);
            len:数据长度
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_string_update(unsigned char dpid,const unsigned char value[],unsigned short len);
+//unsigned char mcu_dp_string_update(unsigned char dpid,const unsigned char value[],unsigned short len);
 
 /*****************************************************************************
 函数名称 : mcu_dp_enum_update
@@ -164,7 +164,7 @@ unsigned char mcu_dp_enum_update(unsigned char dpid,unsigned char value);
            value:当前dp值
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_bitmap_update(unsigned char dpid,unsigned long value);
+//unsigned char mcu_dp_bitmap_update(unsigned char dpid,unsigned long value);
 
 /*****************************************************************************
 函数名称 : mcu_get_dp_download_bool

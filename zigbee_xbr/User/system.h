@@ -137,13 +137,13 @@ void set_zigbee_state(ZIGBEE_STATE_E state);
 输入参数 : state 枚举类型
 返回参数 : 无
 *****************************************************************************/
-ZIGBEE_STATE_E get_zigbee_state(void);
+//ZIGBEE_STATE_E get_zigbee_state(void);
 
-void zigbee_ota_data_req_send(unsigned char* pid, \
+/* void zigbee_ota_data_req_send(unsigned char* pid, \
                                             unsigned char ver, \
                                             unsigned int image_offset, \
                                             unsigned char req_data_len);
-
+ */
 unsigned char Queue_Read_Byte(void);
 void data_handle(unsigned short offset);
 void seq_num_set(unsigned short seq_num);

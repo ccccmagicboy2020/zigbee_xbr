@@ -13,7 +13,7 @@
 输入参数 : Value_H:高字节/Value_L:低字节
 返回参数 : bcd_value:转换完成后数据
 *****************************************************************************/
-unsigned char hex_to_bcd(unsigned char Value_H,unsigned char Value_L)
+/* unsigned char hex_to_bcd(unsigned char Value_H,unsigned char Value_L)
 {
   unsigned char bcd_value;
   
@@ -37,7 +37,7 @@ unsigned char hex_to_bcd(unsigned char Value_H,unsigned char Value_L)
   bcd_value |= Value_L & 0x0f;
 
   return bcd_value;
-}
+} */
 /*****************************************************************************
 函数名称 : my_strlen
 功能描述 : 求字符串长度
@@ -126,7 +126,7 @@ void *my_memcpy(void *dest, const void *src, unsigned short count)
            s2:源地址
 返回参数 : 数据处理完后的源地址
 *****************************************************************************/
-char *my_strcpy(char *dest, const char *src)  
+/* char *my_strcpy(char *dest, const char *src)  
 {
   char *p = dest;
   while(*src!='\0')
@@ -135,7 +135,7 @@ char *my_strcpy(char *dest, const char *src)
   }
   *dest = '\0';
   return p;
-}
+} */
 /*****************************************************************************
 函数名称 : my_strcmp
 功能描述 : 内存拷贝
@@ -143,7 +143,7 @@ char *my_strcpy(char *dest, const char *src)
            s2:字符串2
 返回参数 : 大小比较值，0:s1=s2; -1:s1<s2; 1:s1>s2
 *****************************************************************************/
-int my_strcmp(char *s1 , char *s2)
+/* int my_strcmp(char *s1 , char *s2)
 {
   while( *s1 && *s2 && *s1 == *s2 )
   {
@@ -151,20 +151,20 @@ int my_strcmp(char *s1 , char *s2)
     s2++;
   }
   return *s1 - *s2;
-}
+} */
 /*****************************************************************************
 函数名称 : int_to_byte
 功能描述 : 将int类型拆分四个字节
 输入参数 : number:4字节原数据;value:处理完成后4字节数据
 返回参数 :无
 ****************************************************************************/
-void int_to_byte(unsigned long number,unsigned char value[4])
+/* void int_to_byte(unsigned long number,unsigned char value[4])
 {
   value[0] = number >> 24;
   value[1] = number >> 16;
   value[2] = number >> 8;
   value[3] = number & 0xff;
-}
+} */
 /*****************************************************************************
 函数名称 : byte_to_int
 功能描述 : 将4字节合并为1个32bit变量
@@ -193,13 +193,13 @@ unsigned long byte_to_int(const unsigned char value[4])
 返回参数 : 无
 使用说明 : 无
 *****************************************************************************/
-void mcu_reset_zigbee(void)
+/* void mcu_reset_zigbee(void)
 {
   unsigned short length = 0;
 
   length = set_zigbee_uart_byte(length,0);
   zigbee_uart_write_frame(ZIGBEE_CFG_CMD, length);
-}
+} */
 
 /*****************************************************************************
 函数名称 : mcu_network_start
@@ -224,7 +224,7 @@ void mcu_network_start(void)
            len:数据长度
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_raw_update(unsigned char dpid,const unsigned char value[],unsigned short len)
+/* unsigned char mcu_dp_raw_update(unsigned char dpid,const unsigned char value[],unsigned short len)
 {
   unsigned short length = 0;
   
@@ -239,7 +239,7 @@ unsigned char mcu_dp_raw_update(unsigned char dpid,const unsigned char value[],u
   zigbee_uart_write_frame(DATA_RSP_ASYNC_CMD,length);
   
   return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : mcu_dp_bool_update
 功能描述 : bool型dp数据上传
@@ -304,7 +304,7 @@ unsigned char mcu_dp_value_update(unsigned char dpid,unsigned long value)
            len:数据长度
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_string_update(unsigned char dpid,const unsigned char value[],unsigned short len)
+/* unsigned char mcu_dp_string_update(unsigned char dpid,const unsigned char value[],unsigned short len)
 {
   unsigned short length = 0;
   
@@ -319,7 +319,7 @@ unsigned char mcu_dp_string_update(unsigned char dpid,const unsigned char value[
   zigbee_uart_write_frame(DATA_RSP_ASYNC_CMD,length);
   
   return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : mcu_dp_enum_update
 功能描述 : enum型dp数据上传
@@ -350,7 +350,7 @@ unsigned char mcu_dp_enum_update(unsigned char dpid,unsigned char value)
            value:当前dp值
 返回参数 : 无
 *****************************************************************************/
-unsigned char mcu_dp_bitmap_update(unsigned char dpid,unsigned long value)
+/* unsigned char mcu_dp_bitmap_update(unsigned char dpid,unsigned long value)
 {
   unsigned short length = 0;
 
@@ -382,7 +382,7 @@ unsigned char mcu_dp_bitmap_update(unsigned char dpid,unsigned long value)
   zigbee_uart_write_frame(DATA_RSP_ASYNC_CMD,length);
 
   return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : mcu_get_dp_download_bool
 功能描述 : mcu获取bool型下发dp值

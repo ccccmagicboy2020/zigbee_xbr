@@ -27,11 +27,11 @@ static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 	 unsigned int IMAGE_OFFSET=0;
 #endif
 
-static void get_zigbee_network_state(void)
+/* static void get_zigbee_network_state(void)
 {
     unsigned char length = 0;
     zigbee_uart_write_frame(GET_ZIGBEE_NETWORK_STATE_CMD, length);
-}
+} */
 
 static void cmd0(void)
 {
@@ -328,7 +328,7 @@ static unsigned char* zigbee_time_convert(unsigned long time, time_t* convert_ti
 输入参数 : version：版本号
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_ver_req_send(unsigned char version)
+/* static void zigbee_ota_ver_req_send(unsigned char version)
 {
     unsigned short length = 0;
   
@@ -337,14 +337,14 @@ static void zigbee_ota_ver_req_send(unsigned char version)
     zigbee_uart_write_frame(MCU_OTA_VER_REQ_CMD,length);
 
     //return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : zigbee_ota_notify_send
 功能描述 : OTA升级通知回复
 输入参数 : status：状态
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_notify_send(unsigned char status)
+/* static void zigbee_ota_notify_send(unsigned char status)
 {
     unsigned short length = 0;
   
@@ -353,7 +353,7 @@ static void zigbee_ota_notify_send(unsigned char status)
     zigbee_uart_write_frame(MCU_OTA_NOTIFY_CMD,length);
 
     //return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : zigbee_ota_data_req_send
 功能描述 : OTA固件内容请求
@@ -363,7 +363,7 @@ static void zigbee_ota_notify_send(unsigned char status)
 					 req_data_len: 数据包大小
 返回参数 : 无
 *****************************************************************************/
-void zigbee_ota_data_req_send(unsigned char* pid, \
+/* void zigbee_ota_data_req_send(unsigned char* pid, \
                                             unsigned char ver, \
                                             unsigned int image_offset, \
                                             unsigned char req_data_len)
@@ -385,7 +385,7 @@ void zigbee_ota_data_req_send(unsigned char* pid, \
     zigbee_uart_write_frame(MCU_OTA_DATA_REQ_CMD,length);
 
   //  return SUCCESS;
-}
+} */
 /*****************************************************************************
 函数名称 : zigbee_ota_end_req_send
 功能描述 : OTA固件升级结果上报
@@ -394,7 +394,7 @@ void zigbee_ota_data_req_send(unsigned char* pid, \
 					 ver：版本号
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_end_req_send(unsigned char status, \
+/* static void zigbee_ota_end_req_send(unsigned char status, \
                                             unsigned char* pid, \
                                             unsigned char ver)
 {
@@ -410,7 +410,7 @@ static void zigbee_ota_end_req_send(unsigned char status, \
     zigbee_uart_write_frame(MCU_OTA_END_CMD,length);
     
   //  return SUCCESS;
-}
+} */
 
 
 
@@ -536,10 +536,10 @@ static void zigbee_scene_report_status_handle(unsigned char scene_status)
 输入参数 : rssi:ZigBee模块rssi测试数值（0-100）
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_rf_test_result_handle(bool result, unsigned char rssi)
+/* static void zigbee_rf_test_result_handle(bool result, unsigned char rssi)
 {
     zigbee_test_result( result, rssi);
-}
+} */
 
 #ifdef SUPPORT_MCU_FIRM_UPDATE 
 /*****************************************************************************
@@ -702,10 +702,10 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
 输入参数 : state 枚举类型
 返回参数 : 无
 *****************************************************************************/
-ZIGBEE_STATE_E get_zigbee_state(void)
+/* ZIGBEE_STATE_E get_zigbee_state(void)
 {
     return zigbee_state;
-}
+} */
 
 /*****************************************************************************
 函数名称 : data_handle
@@ -807,9 +807,9 @@ ZIGBEE_STATE_E get_zigbee_state(void)
 
         case FUNC_TEST_CMD:
             {
-                bool flag = zigbee_uart_rx_buf[offset + DATA_START];
-                unsigned char rssi = zigbee_uart_rx_buf[offset + DATA_START + 1];
-                zigbee_rf_test_result_handle(flag, rssi);
+//                bool flag = zigbee_uart_rx_buf[offset + DATA_START];
+//                unsigned char rssi = zigbee_uart_rx_buf[offset + DATA_START + 1];
+//                zigbee_rf_test_result_handle(flag, rssi);
             }
             break;
 #ifdef SUPPORT_MCU_FIRM_UPDATE             
