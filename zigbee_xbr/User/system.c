@@ -395,11 +395,12 @@ static unsigned char* zigbee_time_convert(unsigned long time, time_t* convert_ti
 					 ver：版本号
 返回参数 : 无
 *****************************************************************************/
-/* static void zigbee_ota_end_req_send(unsigned char status, \
-                                            unsigned char* pid, \
-                                            unsigned char ver)
+static void zigbee_ota_end_req_send(unsigned char status)
 {
     unsigned short length = 0, pid_len = 8;
+	unsigned char* pid;
+	
+	pid = (unsigned char *)PRODUCT_KEY;
     
     length = set_zigbee_uart_byte(length,status);
      while(pid_len--)
@@ -407,11 +408,9 @@ static unsigned char* zigbee_time_convert(unsigned long time, time_t* convert_ti
         length = set_zigbee_uart_byte(length,*pid++);
     }
     
-    length = set_zigbee_uart_byte(length,ver);
+    length = set_zigbee_uart_byte(length, 0x00);
     zigbee_uart_write_frame(MCU_OTA_END_CMD,length);
-    
-  //  return SUCCESS;
-} */
+}
 
 
 
@@ -542,7 +541,6 @@ static void zigbee_scene_report_status_handle(unsigned char scene_status)
     zigbee_test_result( result, rssi);
 } */
 
-#ifdef SUPPORT_MCU_FIRM_UPDATE 
 /*****************************************************************************
 函数名称 : zigbee_ota_ver_req_handle
 功能描述 : ZigBee模块获取MCU固件版本号
@@ -551,19 +549,27 @@ static void zigbee_scene_report_status_handle(unsigned char scene_status)
 *****************************************************************************/
 static void zigbee_ota_ver_req_handle(void)
 {
-	//用户自行处理，以下代码仅做参考
-	/*
-	if(x==0)
-	{
-  zigbee_ota_ver_req_send(NOW_MCU_VER);
-	x=1;
-	}
-	if(x==1)
-	{
-	zigbee_ota_ver_req_send(UPDATE_MCU_VER);
-	}
-	*/
+	unsigned short length = 0;
+	length = set_zigbee_uart_byte(length, get_current_mcu_fw_ver());	//current fw version
+	zigbee_uart_write_frame(MCU_OTA_VER_REQ_CMD, length);
+}
 
+unsigned char get_current_mcu_fw_ver(void)
+{
+	unsigned char *fw_ver = (unsigned char*) MCU_VER;	//Current version
+	unsigned char current_mcu_fw_ver = 0;
+	current_mcu_fw_ver = assic_to_hex(fw_ver[0]) << 6;	//high ver
+	current_mcu_fw_ver |= assic_to_hex(fw_ver[2]) << 4;	//mid ver
+	current_mcu_fw_ver |= assic_to_hex(fw_ver[4]);	//low ver
+	return current_mcu_fw_ver;
+}
+
+char assic_to_hex(unsigned char assic_num)
+{
+	if(assic_num<0x30 && assic_num > 0x39)	//0~9
+		return -1;
+	else
+		return assic_num % 0x30;
 }
 
 
@@ -576,25 +582,7 @@ static void zigbee_ota_ver_req_handle(void)
 输入参数 : image_crc： ota固件校验和
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_notify_handle(unsigned char* pid, \
-                                            unsigned char version, \
-                                            unsigned int image_size, \
-                                            unsigned int image_crc)
 
-{
-	//用户自行处理，以下代码仅做参考
-	/*
-	unsigned char i=0;
-	for(i=0;i<8;i++)
-	{
-		PID[i]=pid[i];
-	}
-	
-	update_mcu_status=0;
-  zigbee_ota_notify_send(update_mcu_status);
-	*/
-
-}
 
 /*****************************************************************************
 函数名称 : zigbee_ota_data_rsp_handle
@@ -607,33 +595,7 @@ static void zigbee_ota_notify_handle(unsigned char* pid, \
 输入参数 : data： ota升级数据
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_data_rsp_handle(unsigned char status, 
-                                    unsigned char* pid, \
-                                    unsigned char version, \
-                                    unsigned int  image_offset, \
-                                    unsigned char data_len, \
-                                    unsigned char* data)
-{
-	//用户自行处理，以下代码仅做参考
-	/*
-	unsigned  char i;
-   
-		for(i=0;i<data_len;i++)
-	{
-		DATA[IMAGE_OFFSET+i]=data[i];
-	}
-		IMAGE_OFFSET+=5;
-		zigbee_ota_data_req_send(PID,version,IMAGE_OFFSET,5);
-	if(data_len<5)
-	{
-		IMAGE_OFFSET=0;
-		zigbee_ota_end_req_send(0,pid,UPDATE_MCU_VER);
-	}
-//		zigbee_ota_end_req_send(0,pid,UPDATE_MCU_VER);
-	*/
 
-}
-#endif
 /*****************************************************************************
 函数名称 : zigbee_time_get_handle
 功能描述 : 网络数据同步处理
@@ -817,8 +779,7 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
 //                unsigned char rssi = zigbee_uart_rx_buf[offset + DATA_START + 1];
 //                zigbee_rf_test_result_handle(flag, rssi);
             }
-            break;
-#ifdef SUPPORT_MCU_FIRM_UPDATE             
+            break;          
         case MCU_OTA_VER_REQ_CMD:
             {
                 zigbee_ota_ver_req_handle();
@@ -827,92 +788,17 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
 
         case MCU_OTA_NOTIFY_CMD:
             {
-                unsigned char pid[8] = {0};
-                unsigned char version = 0, index = 0;
-                unsigned int image_size = 0;
-                unsigned int image_crc = 0;
-                unsigned char receive_len = offset + DATA_START;
-
-                my_memcpy(pid,(const char *)zigbee_uart_rx_buf+receive_len,8);
-                receive_len += 8;
-                version = zigbee_uart_rx_buf[receive_len];
-                receive_len++;
-
-                do
-                {
-                    image_size += zigbee_uart_rx_buf[receive_len];
-                    receive_len++;
-                    image_size = image_size << 8;
-										index++;
-                }
-                while (index < 3);
-								
-                image_size += zigbee_uart_rx_buf[receive_len];
-                receive_len++;
-
-                index = 0;
-                do
-                {
-                    image_crc += zigbee_uart_rx_buf[receive_len];
-                    receive_len++;
-                    image_size = image_crc << 8;
-										index++;
-                }
-                while (index < 3);
-                image_crc += zigbee_uart_rx_buf[receive_len];
-                receive_len++;
-                
-                zigbee_ota_notify_handle(pid, version, image_size, image_crc);
+							//
+							zigbee_ota_end_req_send(0x01);
+							go_bootloader_ota();
             }
             break;
 
         case MCU_OTA_DATA_REQ_CMD:
             {
-                unsigned char status = 0;
-                unsigned char pid[8] = {0};
-                unsigned char version = 0, index = 0;;
-                unsigned int image_offset = 0;
-                unsigned char receive_len = offset + DATA_START;
-                unsigned char data_len = 0;
-                unsigned char data[64] = {0};
-
-                status = zigbee_uart_rx_buf[receive_len];
-								if(status==0)
-									{
-										receive_len++;
-										//memcpy(pid, &zigbee_uart_rx_buf[receive_len]);
-										my_memcpy(pid,(const char *)(zigbee_uart_rx_buf+receive_len),8);
-										receive_len += 8;
-
-										version = zigbee_uart_rx_buf[receive_len];
-										receive_len++;
-
-										do
-										{
-												image_offset += zigbee_uart_rx_buf[receive_len];
-												receive_len++;
-												image_offset = image_offset << 8;
-												index++;
-										}
-										while (index < 3);
-										image_offset += zigbee_uart_rx_buf[receive_len];
-										receive_len++;
-										data_len = total_len+PROTOCOL_HEAD - receive_len;
-										my_memcpy(data, (const char *)(zigbee_uart_rx_buf+receive_len),data_len);
-										//data_len = total_len - receive_len;
-
-										zigbee_ota_data_rsp_handle(status, \
-																				pid, \
-																				version, \
-																				image_offset, \
-																				data_len, \
-																				data);
-									}
-								else
-									return;
+							//
             }
-            break;
-#endif            
+            break;        
         case TIME_GET_CMD:
             zigbee_time_get_handle((unsigned char *)zigbee_uart_rx_buf + offset + DATA_START, total_len);
             break;

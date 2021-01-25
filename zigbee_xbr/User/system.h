@@ -153,4 +153,7 @@ void cmd0(void);
 void cmd1(void);
 void get_zigbee_network_state(void);
 
+unsigned char get_current_mcu_fw_ver(void);
+char assic_to_hex(unsigned char assic_num);
+
 #endif
