@@ -1,23 +1,20 @@
-/****************************************Copyright (c)*************************
-**                               版权所有 (C), 2018-0704, 涂鸦科技
-**
-**                                 http://www.tuya.com
-**
-**--------------文件信息-------------------------------------------------------
-**文   件   名: system.c
-**描        述: zigbee数据处理函数
-**使 用 说 明 : 用户无需关心该文件实现内容
-**
-**
-**--------------当前版本修订---------------------------------------------------
-** 版  本: v1.0.0
-** 日　期: 2018年7月4日
-** 描　述: 1:协议初版
-**
-**-----------------------------------------------------------------------------
-******************************************************************************/
+/**
+* @file  system.h
+* @brief declaration of fuction in system.c and define maroc which is used in system.c
+* @author luchao
+* @date 2020.03.13
+* @par email:
+* luchao@tuya.com
+* @copyright HANGZHOU TUYA INFORMATION TECHNOLOGY CO.,LTD
+* @par company
+* http://www.tuya.com
+*/
+
+#include "protocol.h"
+
 #ifndef __SYSTEM_H_
 #define __SYSTEM_H_
+
 
 #ifdef SYSTEM_GLOBAL
   #define SYSTEM_EXTERN
@@ -25,10 +22,53 @@
   #define SYSTEM_EXTERN   extern
 #endif
 
-#include "zigbee.h"
-//=============================================================================
-//帧的字节顺序
-//=============================================================================
+#ifdef SUPPORT_MCU_RTC_CHECK
+
+typedef struct 
+{
+	unsigned char hour;
+	unsigned char min;
+	unsigned char sec;
+	unsigned short w_year;
+	unsigned char  w_month;
+	unsigned char  w_date; 
+}_calendar_obj; 
+#endif
+
+
+#ifdef SUPPORT_MCU_OTA
+#define FW_SINGLE_PACKET_SIZE 		0x30	     ///< firmware single packet size, define by mcu 
+SYSTEM_EXTERN unsigned char current_mcu_pid[8];	///< current mcu pid
+
+/** ota mcu firmware struct*/
+typedef struct
+{
+	unsigned char mcu_ota_pid[8];	  //OTA fw PID
+	unsigned char mcu_ota_ver;	     //OTA fw version
+	unsigned int mcu_ota_fw_size;	 //OTA fw size
+	unsigned int mcu_current_offset; //current offset 
+	unsigned int mcu_ota_checksum;  //OTA fw checksum	
+}_ota_mcu_fw;
+
+SYSTEM_EXTERN _ota_mcu_fw ota_fw_info;	///< ota firmware infomation
+#endif
+
+#ifdef SET_ZIGBEE_NWK_PARAMETER
+typedef struct
+{
+	unsigned short   heart_period; 
+	unsigned short   join_nwk_time;	    
+	unsigned short   rejion_period;	 
+	unsigned short   poll_period; 
+	unsigned short   fast_poll_period;  
+	unsigned char    poll_failure_times;  
+	unsigned char    rejoin_try_times;  
+	unsigned char    app_trigger_rejoin; 
+	unsigned char    rf_send_power;  
+}nwk_parameter_t
+#endif
+
+///< Byte order of frames
 #define         HEAD_FIRST                      0
 #define         HEAD_SECOND                     1
 #define         PROTOCOL_VERSION                2
@@ -39,111 +79,223 @@
 #define         LENGTH_LOW                      7
 #define         DATA_START                      8
 
-//=============================================================================
-//数据帧类型
-//=============================================================================
-#define         PRODUCT_INFO_CMD                0x01                            //产品信息
-#define         ZIGBEE_STATE_CMD                0x02                            //zigbee工作状态	
-#define         ZIGBEE_CFG_CMD                  0x03                            //配置zigbee模块
-#define         ZIGBEE_DATA_REQ_CMD             0x04                            //zigbee数据下发命令
-#define         DATA_RSP_SYNC_CMD               0x05                            //MCU状态主动上报
-#define         DATA_RSP_ASYNC_CMD              0x06                            //MCU状态被动上报
-#define         FUNC_TEST_CMD                   0x08                            //zigbee模块功能测试
-#ifdef SERIAL_PROTOCOL_SCENE_ENABLE
-#define         SCENE_SWITCH_NUM_GET_CMD        0x09                            //获取场景开关个数（仅用于场景开关）
-#define         SCENE_SWITCH_ID_REPORT_CMD      0x0A                            //获取场景上报ID（仅用于场景开关）
-#endif
-#define         MCU_OTA_VER_REQ_CMD             0x0B                            //OTA 版本请求
-#define         MCU_OTA_NOTIFY_CMD              0x0C                            //OTA 升级通知
-#define         MCU_OTA_DATA_REQ_CMD            0x0D                            //OTA 固件内容请求
-#define         MCU_OTA_END_CMD                 0x0E                            //OTA 结果上报
-#define         TIME_GET_CMD                    0x24                            //zigbee模块时间同步
+///< define cmd of frame 
+#define         PRODUCT_INFO_CMD                1                               //pid information 
+#define         ZIGBEE_STATE_CMD                2                               //zigbee module send network state to mcu 	
+#define         ZIGBEE_CFG_CMD                  3                               //mcu config zigbee state 
+#define         ZIGBEE_DATA_REQ_CMD             4                               //zigbee module shend DP data to mcu 
+#define         DATA_DATA_RES_CMD               5                               //mcu response zigbee DP send 
+#define         DATA_REPORT_CMD                 6                               //mcu report DP data to zigbee 
+#define         ZIGBEE_RF_TEST_CMD              8                               // 
+#define         DYNAMIC_TIME_CMD                24                              //
+#define         QUERY_KEY_INFO_CMD              9                               //
+#define         CALL_SCENE_CMD                  10                              //
 
-//=============================================================================
-#define SERIAL_PROTOCOL_VER          0x02                                            //协议版本号
-#define PROTOCOL_HEAD                0x09                                            //固定协议头长度
-#define FIRST_FRAME_HEAD             0x55
-#define SECOND_FRAME_HEAD            0xaa
-#define SERIAL_PROTOCOL_HDR          (FIRST_FRAME_HEAD<<8 | SECOND_FRAME_HEAD)   ///<协议枕头数据
+#define         TIME_GET_CMD                        0x24         
+#define         CHECK_MCU_TYPE_CMD                  0x25      
+#define         SET_ZIGBEE_NEK_PARAMETER_CMD        0x26  
+#define         SEND_BROADCAST_DATA_CMD             0x27         
 
-//============================================================================= 
-SYSTEM_EXTERN volatile unsigned char zigbee_queue_buf[PROTOCOL_HEAD + ZIGBEE_UART_QUEUE_LMT];        //串口队列缓存
-SYSTEM_EXTERN volatile unsigned char zigbee_uart_rx_buf[PROTOCOL_HEAD + ZIGBEE_UART_RECV_BUF_LMT];   //串口接收缓存
-SYSTEM_EXTERN volatile unsigned char zigbee_uart_tx_buf[PROTOCOL_HEAD + ZIGBEE_UART_SEND_BUF_LMT];   //串口发送缓存
-//
+#define			MCU_OTA_VERSION_CMD				        0x0B							//zigbee request mcu version 
+#define			MCU_OTA_NOTIFY_CMD				    	0x0C							//mcu ota notify 
+#define			MCU_OTA_DATA_REQUEST_CMD			    0x0D							//MCU OTA data request 
+#define			MCU_OTA_RESULT_CMD					    0x0E							//MCU OTA result report 
+
+///< frme data define 
+#define SERIAL_PROTOCOL_VER                 0x02                                            // the version of frame 
+#define PROTOCOL_HEAD                       0x09                                           //the lcation of frame length except for tail
+#define FIRST_FRAME_HEAD                    0x55                                            // first byte of frame 
+#define SECOND_FRAME_HEAD                   0xaa                                            // second byte of frame 
+
+///< define communication state 
+#define ZIGBEE_NOT_JION							        0x00	//zigbee module not jion network
+#define ZIGBEE_JOIN_GATEWAY								0x01	//zigbee module had jioned network 
+#define ZIGBEE_JOIN_ERROR								0x02	//zigbee module network state error
+#define ZIGBEE_JOINING							    	0x03	//zigbee module jioning 
+
+#define REPORT_DATA_SUCESS	                            0x10	//translate sucess
+#define REPORT_DATA_FAILURE	                            0x20	//translate failure 
+#define REPORT_DATA_TIMEOUT	                            0x40	//translate timeout 
+#define REPORT_DATA_BUSY                                0x80	//translate busy
+
+#define RESET_ZIGBEE_OK			0x00	//rest zigbee success
+#define RESET_ZIGBEE_ERROR  	0x01	//reset zigbee error
+
+SYSTEM_EXTERN volatile unsigned char zigbee_queue_buf[PROTOCOL_HEAD + ZIGBEE_UART_QUEUE_LMT];        ///< serial received queue 
+SYSTEM_EXTERN volatile unsigned char zigbee_uart_rx_buf[PROTOCOL_HEAD + ZIGBEE_UART_RECV_BUF_LMT];   ///< serial received buf
+SYSTEM_EXTERN volatile unsigned char zigbee_uart_tx_buf[PROTOCOL_HEAD + ZIGBEE_UART_SEND_BUF_LMT];   ///< serial translate buf
+
 SYSTEM_EXTERN volatile unsigned char *queue_in;
 SYSTEM_EXTERN volatile unsigned char *queue_out;
-SYSTEM_EXTERN volatile unsigned short queue_total_data;
 
-/*****************************************************************************
-函数名称 : set_zigbee_uart_byte
-功能描述 : 写zigbee_uart字节
-输入参数 : dest:缓存区其实地址;
-           byte:写入字节值
-返回参数 : 写入完成后的总长度
-*****************************************************************************/
+
+SYSTEM_EXTERN volatile unsigned char zigbee_work_state;                                              ///< the state of zigbee module working 
+
+SYSTEM_EXTERN volatile unsigned char rx_in;         	 ///< recieved a complete frame of data flag 
+SYSTEM_EXTERN volatile unsigned char wakeup_flag;	    ///<  initiative wakeup flag 
+
+SYSTEM_EXTERN unsigned char record_report_time_flag;	///<  0x00：using gateway time；0x01：using mcu local time
+
+SYSTEM_EXTERN unsigned char timestamp[4];	
+SYSTEM_EXTERN _calendar_obj _time;	
+
+/**
+* @brief padding a byte in send buf base on dest
+* @param[in] {dest} the location of padding byte 
+* @param[in] {byte} padding byte 
+* @return  sum of frame after this operation 
+*/
 unsigned short set_zigbee_uart_byte(unsigned short dest, unsigned char byte);
 
-/*****************************************************************************
-函数名称 : set_zigbee_uart_buffer
-功能描述 : 写zigbee_uart_buffer
-输入参数 : dest:目标地址
-           src:源地址
-           len:数据长度
-返回参数 : 无
-*****************************************************************************/
+/**
+* @brief padding buf in send buf base on dest
+* @param[in] {dest} the location of padding 
+* @param[in] {src}  the head address of padding buf
+* @param[in] {len}  the length of padding buf
+* @return  sum of frame after this operation 
+*/
 unsigned short set_zigbee_uart_buffer(unsigned short dest, unsigned char *src, unsigned short len);
 
-/*****************************************************************************
-函数名称 : zigbee_uart_write_frame
-功能描述 : 向zigbee串口发送一帧数据
-输入参数 : fr_type:帧类型
-           len:数据长度
-返回参数 : 无
-*****************************************************************************/
-void zigbee_uart_write_frame(unsigned char fr_type, unsigned short len);
+/**
+* @brief send len bytes data
+* @param[in] {in} the head address of send data
+* @param[in] {len}  the length of send data
+* @return  void
+*/
+void zigbee_uart_write_data(unsigned char *in, unsigned short len);
 
-/*****************************************************************************
-函数名称 : get_check_sum
-功能描述 : 计算校验和
-输入参数 : pack:数据源指针
-           pack_len:计算校验和长度
-返回参数 : 校验和
-*****************************************************************************/
+/**
+* @brief calculate the sum of the array
+* @param[in] {pack} the head address of array
+* @param[in] {pack_len}  the length of  array
+* @return  sum
+*/
 unsigned char get_check_sum(unsigned char *pack, unsigned short pack_len);
-	
-/*****************************************************************************
-函数名称 : get_queue_total_data
-功能描述 : 读取队列内字符
-输入参数 : NULL
-返回参数 : char
-*****************************************************************************/
-unsigned short get_queue_total_data(void);
 
-/*****************************************************************************
-函数名称 : set_zigbee_state
-功能描述 : 设置zigbee的网络状态
-输入参数 : state 枚举类型
-返回参数 : 无
-*****************************************************************************/
-void set_zigbee_state(ZIGBEE_STATE_E state);
+/**
+* @brief send a frame data 
+* @param[in] {fr_cmd} frame cmd id
+* @param[in] {len}    len of frame data 
+* @return  void
+*/
+void zigbee_uart_write_frame(unsigned char fr_cmd, unsigned short len);
 
-/*****************************************************************************
-函数名称 : get_zigbee_state
-功能描述 : 获取zigbee的网络状态
-输入参数 : state 枚举类型
-返回参数 : 无
-*****************************************************************************/
-ZIGBEE_STATE_E get_zigbee_state(void);
+/**
+* @brief handle received frame from zigbee module baseon frame cmd id
+* @param[in] {void}
+* @return  result of handle
+*/
+int data_handle(unsigned short offset);
 
-void zigbee_ota_data_req_send(unsigned char* pid, \
-                                            unsigned char ver, \
-                                            unsigned int image_offset, \
-                                            unsigned char req_data_len);
+/**
+* @brief mcu send a cmd which used to making zigbee module leave network
+* @param[in] {void}
+* @return  void
+*/
+void mcu_exit_zigbee(void);
 
-unsigned char Queue_Read_Byte(void);
-void data_handle(unsigned short offset);
-void seq_num_set(unsigned short seq_num);
-unsigned short seq_num_get(void);
+/**
+* @brief mcu send a cmd which used to making zigbee module restart jion network
+* @param[in] {void}
+* @return  void
+*/
+void mcu_join_zigbee(void);
 
+/**
+* @brief mcu send a cmd which used to getting zigbee network state 
+* @param[in] {void}
+* @return  void
+*/
+void mcu_get_zigbee_state(void);
+
+
+#ifdef SUPPORT_MCU_RTC_CHECK
+/**
+* @brief mcu send a cmd which used to getting timestamp
+* @param[in] {void}
+* @return void
+*/
+void mcu_get_system_time(void);
+
+/**
+* @brief calculta time from frame 
+* @param[in] {void}
+* @return  void
+*/
+void zigbee_timestamp_to_time(void);
 #endif
+
+
+
+/**
+* @brief get mcu pid data dan saved in current_mcu_pid
+* @param[in] {void}
+* @return  result of handle
+*/
+void current_mcu_fw_pid(void);
+
+#ifdef SET_ZIGBEE_NWK_PARAMETER
+/**
+* @brief mcu can set zigbee nwk parameter
+* @param[in] {parameter_t *} 
+* @param
+* @return void
+*/
+ void mcu_set_zigbee_nwk_parameter(nwk_parameter_t *Pparameter);
+#endif
+
+#ifdef BROADCAST_DATA_SEND
+/**
+* @brief mcu can send a broadcast data in zigbee network
+* @param[in] {buf} array of buf which to be sended
+* @param[in] {buf_len} send buf length
+* @return void
+*/
+void mcu_send_broadcast_data(unsigned char buf[], unsigned char buf_len);
+#endif
+
+/**
+* @brief mcu version string to char
+* @param[in] {void}
+* @return  result of version
+*/
+unsigned char get_current_mcu_fw_ver(void);
+
+#ifdef SUPPORT_MCU_OTA 
+/**
+* @brief mcu ota offset requset 
+* @param[in] {packet_offset}  packet offset 
+* @return  viod
+*/
+void mcu_ota_fw_request(void);
+
+/**
+* @brief mcu ota result report 
+* @param[in] {status} result of mcu ota
+* @return  void
+*/
+void mcu_ota_result_report(unsigned char status);
+#endif
+
+
+/**
+* @brief compare str1 and str2
+* @param[in] {str1} str1 
+* @param[in] {str2} str2
+* @return  equal return 0 else return -1
+*/
+int strcmp_barry(unsigned char *str1,unsigned char *str2);
+
+/**
+* @brief translate assic to hex
+* @param[in] {assic_num} assic number
+* @return hex data
+*/
+char assic_to_hex(unsigned char assic_num);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+  
+  
