@@ -13,6 +13,7 @@ extern ulong xdata SUM2;		//
 extern ulong xdata TH;		//
 extern uint xdata average;	//
 extern u8 xdata light_ad;		//
+extern unsigned char upload_disable;
 
 void savevar(void);
 extern const DOWNLOAD_CMD_S xdata download_cmd[];
@@ -690,8 +691,13 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
 	}
 	else if (ZIGBEE_STATE_JOINED == zigbee_state)
 	{
+		upload_disable = 0;
 		all_data_update();
 		savevar();
+	}
+	else if (ZIGBEE_STATE_JOINING == zigbee_state)
+	{
+		upload_disable = 1;
 	}
 }
 

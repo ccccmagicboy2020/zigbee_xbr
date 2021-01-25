@@ -93,6 +93,8 @@ u8 xdata radar_number_send_flag2 = 0;
 u8 xdata person_in_range_flag = 0;
 u8 xdata person_in_range_flag_last = 0;
 
+unsigned char upload_disable = 0;
+
 unsigned char PWM3init(unsigned char ab);
 void Flash_EraseBlock(unsigned int fui_Address); //扇区擦除
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
@@ -1139,30 +1141,33 @@ void main()
 	
 	while (1)
 	{
-		if (light_status_xxx != light_status_xxx_last)
+		if (upload_disable == 0)
 		{
-			mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
-			light_status_xxx_last = light_status_xxx;
-		}
-		
-		if (person_in_range_flag != person_in_range_flag_last)
-		{
-			mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag);
-			person_in_range_flag_last = person_in_range_flag;
-		}
-		
-		if (1 == radar_number_send_flag)
-		{
-			if (1 == radar_number_send_flag2)
+			if (light_status_xxx != light_status_xxx_last)
 			{
-				radar_number_send_flag = 0;
-				radar_number_send_flag2 = 0;
-				if (radar_trig_times_last != radar_trig_times)
-				{
-					mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
-					radar_trig_times_last = radar_trig_times;
-				}
+				mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx);
+				light_status_xxx_last = light_status_xxx;
 			}
+			
+			if (person_in_range_flag != person_in_range_flag_last)
+			{
+				mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag);
+				person_in_range_flag_last = person_in_range_flag;
+			}
+			
+			if (1 == radar_number_send_flag)
+			{
+				if (1 == radar_number_send_flag2)
+				{
+					radar_number_send_flag = 0;
+					radar_number_send_flag2 = 0;
+					if (radar_trig_times_last != radar_trig_times)
+					{
+						mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+						radar_trig_times_last = radar_trig_times;
+					}
+				}
+			}			
 		}
 
 		WDTC |= 0x10; //清看门狗
