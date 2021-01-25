@@ -119,6 +119,7 @@ const DOWNLOAD_CMD_S xdata download_cmd[] =
   {DPID_CLEAR_TRIGGER_NUMBER, DP_TYPE_BOOL},
   {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
   {DPID_PERSON_IN_RANGE, DP_TYPE_ENUM},
+  {DPID_FACTORY_OP, DP_TYPE_ENUM},
 };
 
 
@@ -223,7 +224,8 @@ void all_data_update(void)
     mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times); //VALUE型数据上报;
     mcu_dp_enum_update(DPID_LIGHT_STATUS,light_status_xxx); //枚举型数据上报;
 	mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag); //枚举型数据上报;
-
+	
+    mcu_dp_enum_update(DPID_FACTORY_OP, 6); //枚举型数据上报;
 }
 
 
@@ -829,7 +831,65 @@ static unsigned char dp_download_clear_trigger_number_handle(const unsigned char
   
   	return SUCCESS;
 }
-
+/*****************************************************************************
+函数名称 : dp_download_factory_op_handle
+功能描述 : 针对DPID_FACTORY_OP的处理函数
+输入参数 : value:数据源数据
+        : length:数据长度
+返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+*****************************************************************************/
+static unsigned char dp_download_factory_op_handle(const unsigned char value[], unsigned short length)
+{
+    //示例:当前DP类型为ENUM
+    unsigned char ret;
+    unsigned char factory_op;
+    
+    factory_op = mcu_get_dp_download_enum(value,length);
+    switch(factory_op) {
+        case 0:// soft reset the mcu
+					soft_reset_mcu();
+        break;
+        
+        case 1:// go bootloader and fw ota
+					go_bootloader_ota();
+        break;
+        
+        case 2:// tuya re-config the network
+					tuya_re_config_network();
+        break;
+        
+        case 3:// tuya reset module
+					tuya_reset_module();
+        break;
+        
+        case 4:// tuya retry the ota (send fail)
+					tuya_retry_ota();
+        break;
+        
+        case 5:// reset_default_parameter
+					reset_default_parameter();
+					
+        break;
+        case 6:// do nothing
+					//
+        break;
+        case 7:// tuya 产测
+			//
+        break;
+        
+        default:
+    
+        break;
+    }
+    
+    //处理完DP数据后应有反馈
+    ret = mcu_dp_enum_update(DPID_FACTORY_OP, factory_op);
+    if(ret == SUCCESS)
+        return SUCCESS;
+    else
+        return ERROR;
+}
 
 /******************************************************************************
                                 WARNING!!!                     
@@ -977,6 +1037,11 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
             ret = dp_download_clear_trigger_number_handle(value,length);
 			switchcnt = 0;
         break;
+        case DPID_FACTORY_OP:
+            //工厂操作处理函数
+            ret = dp_download_factory_op_handle(value,length);
+			switchcnt = 0;
+        break;
 
   default:
         switchcnt = 0;
@@ -995,3 +1060,57 @@ unsigned char get_download_cmd_total(void)
 {
   return(sizeof(download_cmd) / sizeof(download_cmd[0]));
 }
+
+
+void soft_reset_mcu(void)
+{
+	IAR_Soft_Rst_No_Option();
+}
+	
+void go_bootloader_ota(void)
+{
+	//write flash flag
+	Flash_EraseBlock(MAGIC_SECTOR_ADDRESS0);
+	FLASH_WriteData(0x01, MAGIC_SECTOR_ADDRESS0);
+	//string tips
+	//mcu_dp_string_update(DPID_STRING_REPORT, "already in bootloader", sizeof("already in bootloader"));
+	//bootloader
+	IAR_Soft_Rst_Option();
+}
+		
+void tuya_re_config_network(void)
+{
+	mcu_network_start();
+}
+			
+void tuya_reset_module(void)
+{
+	mcu_reset_zigbee();
+}
+				
+void tuya_retry_ota(void)
+{
+	//
+}
+					
+void reset_default_parameter(void)
+{
+	//
+}
+
+void IAR_Soft_Rst_No_Option(void)
+{
+	EA = 0;
+	IAP_CMD = 0xF00F;
+	IAP_CMD = 0x8778;
+	EA = 1;
+}
+
+void IAR_Soft_Rst_Option(void)
+{
+	EA = 0;
+	IAP_CMD = 0xF00F;
+	IAP_CMD = 0x7887;
+	EA = 1;	
+}
+

@@ -122,6 +122,9 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //人状态(只上报)
 //备注:
 #define DPID_PERSON_IN_RANGE 119
+//工厂操作(可下发可上报)
+//备注:工厂操作菜单
+#define DPID_FACTORY_OP 150
 
 
 /*****************************************************************************
@@ -171,6 +174,19 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
 使用说明 : 该函数用户不能修改
 *****************************************************************************/
 unsigned char get_download_cmd_total(void);
+
+
+void soft_reset_mcu(void);
+void go_bootloader_ota(void);
+void tuya_re_config_network(void);
+void tuya_reset_module(void);
+void tuya_retry_ota(void);
+void reset_default_parameter(void);
+
+void IAR_Soft_Rst_No_Option(void);
+void IAR_Soft_Rst_Option(void);
+
+void clear_timer(void);
 
 #endif
 

@@ -64,6 +64,8 @@
 #define         DP_TYPE_ENUM                    0x04				//枚举型
 #define         DP_TYPE_BITMAP                    0x05				//故障型
 
+#define		 MAGIC_SECTOR_ADDRESS0			0x2E80	//at app zone
+
 typedef enum
 {
   ZIGBEE_STATE_NOT_JOIN =0,  //未连接网络

@@ -193,13 +193,13 @@ unsigned long byte_to_int(const unsigned char value[4])
 返回参数 : 无
 使用说明 : 无
 *****************************************************************************/
-/* void mcu_reset_zigbee(void)
+void mcu_reset_zigbee(void)
 {
   unsigned short length = 0;
 
   length = set_zigbee_uart_byte(length,0);
   zigbee_uart_write_frame(ZIGBEE_CFG_CMD, length);
-} */
+}
 
 /*****************************************************************************
 函数名称 : mcu_network_start
