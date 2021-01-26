@@ -20,14 +20,6 @@ extern const DOWNLOAD_CMD_S xdata download_cmd[];
 
 static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
 
-#ifdef SUPPORT_MCU_FIRM_UPDATE
-     unsigned char x=0;
-     unsigned char update_mcu_status=1;
-	 unsigned char PID[8];
-	 unsigned char DATA[64];
-	 unsigned int IMAGE_OFFSET=0;
-#endif
-
 /* static void get_zigbee_network_state(void)
 {
     unsigned char length = 0;
@@ -547,7 +539,7 @@ static void zigbee_scene_report_status_handle(unsigned char scene_status)
 输入参数 : 无
 返回参数 : 无
 *****************************************************************************/
-static void zigbee_ota_ver_req_handle(void)
+void zigbee_ota_ver_req_handle(void)
 {
 	unsigned short length = 0;
 	length = set_zigbee_uart_byte(length, get_current_mcu_fw_ver());	//current fw version
@@ -789,6 +781,8 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
         case MCU_OTA_NOTIFY_CMD:
             {
 							//
+							zigbee_ota_end_req_send(0x01);
+							zigbee_ota_end_req_send(0x01);
 							zigbee_ota_end_req_send(0x01);
 							go_bootloader_ota();
             }

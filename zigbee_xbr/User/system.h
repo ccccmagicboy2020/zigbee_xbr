@@ -78,6 +78,8 @@ SYSTEM_EXTERN volatile unsigned char *queue_in;
 SYSTEM_EXTERN volatile unsigned char *queue_out;
 SYSTEM_EXTERN volatile unsigned short queue_total_data;
 
+void zigbee_ota_ver_req_handle(void);
+
 /*****************************************************************************
 函数名称 : set_zigbee_uart_byte
 功能描述 : 写zigbee_uart字节

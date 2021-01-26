@@ -101,6 +101,7 @@ void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
 void Flash_ReadArr(unsigned int fui_Address, unsigned char fuc_Length, unsigned char *fucp_SaveArr); //读取任意长度数据
 void savevar(void);
 void reset_bt_module(void);
+void zigbee_ota_ver_req_handle(void);
 
 unsigned char xdata guc_Read_a[12] = {0x00}; //用于存放读取的数据
 unsigned char xdata guc_Read_a1[2] = {0x00}; //用于存放读取的数据
@@ -1138,6 +1139,10 @@ void main()
 	{
 		savevar();
 	}
+	
+	zigbee_ota_ver_req_handle();
+	zigbee_ota_ver_req_handle();
+	zigbee_ota_ver_req_handle();
 	
 	while (1)
 	{
