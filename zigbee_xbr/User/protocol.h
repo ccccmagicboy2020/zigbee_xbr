@@ -121,7 +121,9 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //工厂操作(可下发可上报)
 //备注:工厂操作菜单
 #define DPID_FACTORY_OP 150
-
+//OTA结果(可下发可上报)
+//备注:ota结果
+#define DPID_OTA_RESULT 154
 
 /*****************************************************************************
 函数名称 : all_data_update

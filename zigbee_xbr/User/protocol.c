@@ -61,6 +61,7 @@ extern u8 xdata all_day_micro_light_enable;
 extern u16 xdata radar_trig_times;
 extern u8 xdata light_status_xxx;
 extern u8 xdata person_in_range_flag;
+extern unsigned char upload_disable;
 
 //extern TYPE_BUFFER_S FlashBuffer;
 void send_data(u8 d);
@@ -73,13 +74,7 @@ void Delay_us_1(uint q1);
 
 void reset_bt_module(void)
 {
-/* 	send_data(0x55);//p15，重置模块
-	send_data(0xAA);
-	send_data(0x00);
-	send_data(0x04);
-	send_data(0x00);
-	send_data(0x00);
-	send_data(0x03); */
+	upload_disable = 1;
 	mcu_network_start();
 }
 /******************************************************************************
@@ -120,6 +115,7 @@ const DOWNLOAD_CMD_S xdata download_cmd[] =
   {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
   {DPID_PERSON_IN_RANGE, DP_TYPE_ENUM},
   {DPID_FACTORY_OP, DP_TYPE_ENUM},
+  {DPID_OTA_RESULT, DP_TYPE_ENUM},
 };
 
 
@@ -890,7 +886,40 @@ static unsigned char dp_download_factory_op_handle(const unsigned char value[], 
     else
         return ERROR;
 }
-
+/*****************************************************************************
+函数名称 : dp_download_ota_result_handle
+功能描述 : 针对DPID_OTA_RESULT的处理函数
+输入参数 : value:数据源数据
+        : length:数据长度
+返回参数 : 成功返回:SUCCESS/失败返回:ERROR
+使用说明 : 可下发可上报类型,需要在处理完数据后上报处理结果至app
+*****************************************************************************/
+static unsigned char dp_download_ota_result_handle(const unsigned char value[], unsigned short length)
+{
+    //示例:当前DP类型为ENUM
+    unsigned char ret;
+    unsigned char ota_result;
+    
+    ota_result = mcu_get_dp_download_enum(value,length);
+    switch(ota_result) {
+        case 0:
+        break;
+        
+        case 1:
+        break;
+        
+        default:
+    
+        break;
+    }
+    
+    //处理完DP数据后应有反馈
+    ret = mcu_dp_enum_update(DPID_OTA_RESULT, ota_result);
+    if(ret == SUCCESS)
+        return SUCCESS;
+    else
+        return ERROR;
+}
 /******************************************************************************
                                 WARNING!!!                     
 此代码为SDK内部调用,请按照实际dp数据实现函数内部数据
@@ -1042,7 +1071,11 @@ unsigned char dp_download_handle(unsigned char dpid,const unsigned char value[],
             ret = dp_download_factory_op_handle(value,length);
 			switchcnt = 0;
         break;
-
+        case DPID_OTA_RESULT:
+            //OTA结果处理函数
+            ret = dp_download_ota_result_handle(value,length);
+			switchcnt = 0;
+        break;
   default:
         switchcnt = 0;
     break;

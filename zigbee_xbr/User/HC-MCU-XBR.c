@@ -1130,6 +1130,8 @@ void main()
 
 	SUM = 0;
 	
+	upload_disable = 0;	
+	
 	if (resetbtcnt > 3)
 	{
 		resetbtcnt = 0;
@@ -1139,10 +1141,6 @@ void main()
 	{
 		savevar();
 	}
-	
-	zigbee_ota_ver_req_handle();
-	zigbee_ota_ver_req_handle();
-	zigbee_ota_ver_req_handle();
 	
 	while (1)
 	{

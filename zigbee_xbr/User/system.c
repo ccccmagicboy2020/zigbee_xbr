@@ -15,7 +15,9 @@ extern uint xdata average;	//
 extern u8 xdata light_ad;		//
 extern unsigned char upload_disable;
 
+void Delay_ms(uint t);
 void savevar(void);
+
 extern const DOWNLOAD_CMD_S xdata download_cmd[];
 
 static ZIGBEE_STATE_E xdata zigbee_state = ZIGBEE_STATE_NOT_JOIN;
@@ -639,9 +641,10 @@ static void zigbee_time_get_handle(unsigned char* data0, unsigned char data_len)
 *****************************************************************************/
 void set_zigbee_state(ZIGBEE_STATE_E state)
 {
-    zigbee_state = state;
+  zigbee_state = state;
 	if (ZIGBEE_STATE_NOT_JOIN == zigbee_state)
 	{
+		upload_disable = 0;
 	}
 	else if (ZIGBEE_STATE_JOINED == zigbee_state)
 	{
@@ -652,6 +655,10 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
 	else if (ZIGBEE_STATE_JOINING == zigbee_state)
 	{
 		upload_disable = 1;
+	}
+	else
+	{
+		upload_disable = 0;
 	}
 }
 
@@ -781,9 +788,9 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
         case MCU_OTA_NOTIFY_CMD:
             {
 							//
+							Delay_ms(100);
 							zigbee_ota_end_req_send(0x01);
-							zigbee_ota_end_req_send(0x01);
-							zigbee_ota_end_req_send(0x01);
+							Delay_ms(100);
 							go_bootloader_ota();
             }
             break;
