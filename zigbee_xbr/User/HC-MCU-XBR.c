@@ -1134,8 +1134,12 @@ void main()
 	
 	if (resetbtcnt > 3)
 	{
-		resetbtcnt = 0;
 		reset_bt_module();
+		if (resetbtcnt > 12)
+		{
+			go_bootloader_ota();
+		}
+		resetbtcnt = 0;
 	}
 	else
 	{
