@@ -43,8 +43,8 @@
                          2:定义收发缓存:
                     如当前使用MCU的RAM不够,可修改
 ******************************************************************************/
-#define ZIGBEE_UART_QUEUE_LMT             24  //16         //数据接收队列大小,如MCU的RAM不够,可缩小
-#define ZIGBEE_UART_RECV_BUF_LMT          24              //根据用户DP数据大小量定,必须大于24
+#define ZIGBEE_UART_QUEUE_LMT             30  //16         //数据接收队列大小,如MCU的RAM不够,可缩小
+#define ZIGBEE_UART_RECV_BUF_LMT          30              //根据用户DP数据大小量定,必须大于24
 #define ZIGBEE_UART_SEND_BUF_LMT          24              //根据用户DP数据大小量定,必须大于24
 
 //============================================================================= 
@@ -56,7 +56,7 @@ typedef struct
     unsigned char hour;     /*时， 取值范围为0-23*/
     unsigned char minute;   /*分， 取值范围为0-59*/
     unsigned int second;   /*秒， 取值范围为0-59*/
-} xdata time_t;
+}time_t;
 
 /******************************************************************************
                       3:MCU是否需要支持zigbee功能测试                     

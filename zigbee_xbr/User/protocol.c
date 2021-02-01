@@ -26,8 +26,6 @@
 #include "string.h"
 #include <stdio.h>
 
-
-
 extern u8 xdata switchcnt;      //复位模块点击次数计数
 extern u8 xdata SWITCHflag2;   //开关灯的变量
 extern u8 xdata SWITCHfXBR;    //开关雷达的变量
@@ -43,19 +41,6 @@ ulong xdata sensing_th = 0;     //雷达感应阈值，数值越大越灵敏
 extern  u8 xdata Linkage_flag;	//联动的开关的全局
 extern  u8 xdata Light_on_flag;	//
 
-//const char xdata led_bn_on[]={"led on"};
-//const char xdata led_bn_off[]={"led off"};
-//const char xdata radar_bn_on[]={"radar on"};
-//const char xdata radar_bn_off[]={"radar off"};
-
-//unsigned char DPID_SWITCH_LED2count = 0;
-//unsigned char DPID_SWITCH_XBRcount = 0;
-//unsigned char DPID_BRIGHT_VALUEcount = 0;
-//unsigned char DPID_CDScount = 0;
-//unsigned char DPID_PIR_DELAYcount = 0;
-//unsigned char DPID_STANDBY_TIMEcount = 0;
-//unsigned char DPID_SENSE_STRESScount = 0;
-
 extern u16 xdata groupaddr[8];
 extern u8 xdata all_day_micro_light_enable;
 extern u16 xdata radar_trig_times;
@@ -63,14 +48,16 @@ extern u8 xdata light_status_xxx;
 extern u8 xdata person_in_range_flag;
 extern unsigned char upload_disable;
 
-//extern TYPE_BUFFER_S FlashBuffer;
+void Delay_ms(uint t);
 void send_data(u8 d);
 void reset_bt_module(void);
 unsigned char PWM3init(unsigned char ab);
 void savevar(void);
 void Flash_EraseBlock(unsigned int fui_Address);//flash扇区擦除
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);//flash写入
-void Delay_us_1(uint q1);
+void Delay_us(uint q1);
+
+extern _ota_mcu_fw ota_fw_info;
 
 void reset_bt_module(void)
 {
@@ -1102,12 +1089,41 @@ void soft_reset_mcu(void)
 	
 void go_bootloader_ota(void)
 {
+	unsigned char i = 0;
+	
 	//write flash flag
 	Flash_EraseBlock(MAGIC_SECTOR_ADDRESS0);
+	Delay_us(10000);
 	FLASH_WriteData(0x01, MAGIC_SECTOR_ADDRESS0);
-	//string tips
-	//mcu_dp_string_update(DPID_STRING_REPORT, "already in bootloader", sizeof("already in bootloader"));
-	//bootloader
+	Delay_us(100);
+	//save ota struct
+	i = 0;
+	while(i<8){
+		FLASH_WriteData(ota_fw_info.mcu_ota_pid[i], MAGIC_SECTOR_ADDRESS0 + 0x01 + i);	//ota fw PID
+		Delay_us(100);
+		i++;
+	}
+	FLASH_WriteData(ota_fw_info.mcu_ota_ver, MAGIC_SECTOR_ADDRESS0 + 9);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_fw_size >> 24, MAGIC_SECTOR_ADDRESS0 + 10);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_fw_size >> 16, MAGIC_SECTOR_ADDRESS0 + 11);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_fw_size >> 8, MAGIC_SECTOR_ADDRESS0 + 12);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_fw_size >> 0, MAGIC_SECTOR_ADDRESS0 + 13);
+	Delay_us(100);
+
+	FLASH_WriteData(ota_fw_info.mcu_ota_checksum >> 24, MAGIC_SECTOR_ADDRESS0 + 14);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_checksum >> 16, MAGIC_SECTOR_ADDRESS0 + 15);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_checksum >> 8, MAGIC_SECTOR_ADDRESS0 + 16);
+	Delay_us(100);
+	FLASH_WriteData(ota_fw_info.mcu_ota_checksum >> 0, MAGIC_SECTOR_ADDRESS0 + 17);
+	Delay_us(100);
+	
+	//goto bootloader
 	IAR_Soft_Rst_Option();
 }
 		

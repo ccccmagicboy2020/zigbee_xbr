@@ -157,5 +157,15 @@ void get_zigbee_network_state(void);
 
 unsigned char get_current_mcu_fw_ver(void);
 char assic_to_hex(unsigned char assic_num);
+void response_mcu_ota_notify_event(unsigned char offset);
+
+typedef struct
+{
+	unsigned char mcu_ota_pid[8];	  //OTA fw PID
+	unsigned char mcu_ota_ver;	     //OTA fw version
+	unsigned int mcu_ota_fw_size;	 //OTA fw size
+	unsigned int mcu_current_offset; //current offset 
+	unsigned int mcu_ota_checksum;  //OTA fw checksum	
+}_ota_mcu_fw;
 
 #endif

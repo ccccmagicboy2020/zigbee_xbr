@@ -14,7 +14,9 @@ extern ulong xdata TH;		//
 extern uint xdata average;	//
 extern u8 xdata light_ad;		//
 extern unsigned char upload_disable;
+_ota_mcu_fw ota_fw_info;
 
+void send_data(u8 d);
 void Delay_ms(uint t);
 void savevar(void);
 
@@ -381,34 +383,6 @@ static unsigned char* zigbee_time_convert(unsigned long time, time_t* convert_ti
 
   //  return SUCCESS;
 } */
-/*****************************************************************************
-函数名称 : zigbee_ota_end_req_send
-功能描述 : OTA固件升级结果上报
-输入参数 : status：状态
-					 pid：PID
-					 ver：版本号
-返回参数 : 无
-*****************************************************************************/
-static void zigbee_ota_end_req_send(unsigned char status)
-{
-    unsigned short length = 0, pid_len = 8;
-	unsigned char* pid;
-	
-	pid = (unsigned char *)PRODUCT_KEY;
-    
-    length = set_zigbee_uart_byte(length,status);
-     while(pid_len--)
-    {
-        length = set_zigbee_uart_byte(length,*pid++);
-    }
-    
-    length = set_zigbee_uart_byte(length, 0x00);
-    zigbee_uart_write_frame(MCU_OTA_END_CMD,length);
-}
-
-
-
-
 
 /*****************************************************************************
 函数名称 : product_info_cmd_handle
@@ -695,20 +669,20 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
     
     switch(cmd_type)
     {
-		case GET_ZIGBEE_NETWORK_STATE_CMD:
-            {
-                ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
-                set_zigbee_state(current_state);
-            }
-			break;
-		case USER_DEFINE_CMD0:
-			//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
-			cmd0();
-			break;
-		case USER_DEFINE_CMD1:
-			//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
-			cmd1();
-			break;
+				case GET_ZIGBEE_NETWORK_STATE_CMD:
+					{
+						ZIGBEE_STATE_E current_state = (ZIGBEE_STATE_E) zigbee_uart_rx_buf[offset + DATA_START];
+						set_zigbee_state(current_state);
+					}
+					break;
+				case USER_DEFINE_CMD0:
+					//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
+					cmd0();
+					break;
+				case USER_DEFINE_CMD1:
+					//unsigned char rsp_status = zigbee_uart_rx_buf[offset + DATA_START];
+					cmd1();
+					break;
         case PRODUCT_INFO_CMD:
             product_info_cmd_handle();
             break;
@@ -781,17 +755,13 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
             break;          
         case MCU_OTA_VER_REQ_CMD:
             {
-                zigbee_ota_ver_req_handle();
+							zigbee_ota_ver_req_handle();
             }
             break;
 
         case MCU_OTA_NOTIFY_CMD:
             {
-							//
-							Delay_ms(100);
-							zigbee_ota_end_req_send(0x01);
-							Delay_ms(100);
-							go_bootloader_ota();
+							response_mcu_ota_notify_event(offset);
             }
             break;
 
@@ -809,4 +779,28 @@ void set_zigbee_state(ZIGBEE_STATE_E state)
     }
 }
 
-
+void response_mcu_ota_notify_event(unsigned char offset)
+{
+	unsigned char i = 0;
+	unsigned short length = 0;
+	unsigned short result = 0;
+	
+	my_memset(&ota_fw_info, 0, sizeof(ota_fw_info));
+	
+	i = 0;
+	while(i<8){
+		ota_fw_info.mcu_ota_pid[i] = zigbee_uart_rx_buf[offset + DATA_START + i];								//ota fw PID
+		i++;
+	}
+	ota_fw_info.mcu_ota_ver = zigbee_uart_rx_buf[offset + DATA_START + 8];											//ota fw version
+	ota_fw_info.mcu_ota_fw_size = zigbee_uart_rx_buf[offset + DATA_START + 9] << 24 | \
+																zigbee_uart_rx_buf[offset +DATA_START + 10] << 16 | \
+																zigbee_uart_rx_buf[offset + DATA_START + 11] << 8 | \
+																zigbee_uart_rx_buf[offset + DATA_START + 12];								//ota fw size
+	ota_fw_info.mcu_ota_checksum = zigbee_uart_rx_buf[offset + DATA_START + 13] << 24 | \
+																 zigbee_uart_rx_buf[offset + DATA_START + 14] << 16 | \
+																 zigbee_uart_rx_buf[offset + DATA_START + 15] << 8 | \
+																 zigbee_uart_rx_buf[offset + DATA_START + 16];								//ota fw checksum
+	
+	go_bootloader_ota();
+}

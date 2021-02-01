@@ -95,6 +95,8 @@ u8 xdata person_in_range_flag_last = 0;
 
 unsigned char upload_disable = 0;
 
+extern _ota_mcu_fw ota_fw_info;
+
 unsigned char PWM3init(unsigned char ab);
 void Flash_EraseBlock(unsigned int fui_Address); //ÉÈÇø²Á³ý
 void FLASH_WriteData(unsigned char fuc_SaveData, unsigned int fui_Address);
@@ -1145,6 +1147,8 @@ void main()
 	{
 		savevar();
 	}
+	
+	my_memset(&ota_fw_info, 0, sizeof(ota_fw_info));
 	
 	while (1)
 	{
