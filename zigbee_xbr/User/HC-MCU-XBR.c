@@ -1474,12 +1474,12 @@ void savevar(void)
 	FLASH_WriteData(i,USER_PARAMETER_START_SECTOR_ADDRESS0+10);
 	Delay_us(100);
 	
-
-	
 	Flash_EraseBlock(USER_PARAMETER_START_SECTOR_ADDRESS1);
 	Delay_us(10000);
 	FLASH_WriteData(0, USER_PARAMETER_START_SECTOR_ADDRESS1+0);//clear resetbtcnt
+	Delay_us(100);
 	FLASH_WriteData(1, USER_PARAMETER_START_SECTOR_ADDRESS1+1);//clear join count
+	Delay_us(100);
 	
 	EA=1;				//-20200927
 
