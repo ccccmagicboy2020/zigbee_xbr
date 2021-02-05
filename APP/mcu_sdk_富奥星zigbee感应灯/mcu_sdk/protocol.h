@@ -119,9 +119,15 @@ typedef enum
 //人状态(只上报)
 //备注:
 #define DPID_PERSON_IN_RANGE 119
+//IF统计(只上报)
+//备注:
+#define DPID_IF_SUM 120
 //工厂操作(可下发可上报)
 //备注:工厂操作菜单
 #define DPID_FACTORY_OP 150
+//OTA结果(可下发可上报)
+//备注:ok, fail, fail_status, fail_pid, fail_ver, fail_sum, fail_offset, start, not_include
+#define DPID_OTA_RESULT 154
 
 
 
