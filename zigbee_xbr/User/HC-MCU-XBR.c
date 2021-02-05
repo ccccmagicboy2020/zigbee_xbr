@@ -42,9 +42,9 @@ ulong xdata SUM = 0;	   //an1的raw累加值
 u16 xdata start_times = 1; //???
 u16 xdata times = 0;	   //主循环次数
 ulong xdata TH;			   //设置误差阈值，可由APP设置的感应强度转换
-ulong xdata MAX_DELTA; //最大偏差值
-u8 xdata alarm_times = 0;
-u8 xdata stop_times = 0; //???
+ulong MAX_DELTA; //最大偏差值
+u8 alarm_times = 0;
+u8 stop_times = 0; //???
 
 uint xdata LIGHT = 0;	  //伴亮灯秒的计数器
 uint xdata LIGHT_off = 0; //无人灭灯的分钟计数器
