@@ -118,6 +118,9 @@ zigbee_test_result内部有#err提示,完成函数后请删除该#err
 //人状态(只上报)
 //备注:
 #define DPID_PERSON_IN_RANGE 119
+//IF统计(只上报)
+//备注:
+#define DPID_IF_SUM 120
 //工厂操作(可下发可上报)
 //备注:工厂操作菜单
 #define DPID_FACTORY_OP 150

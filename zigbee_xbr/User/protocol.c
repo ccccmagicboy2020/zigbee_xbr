@@ -101,6 +101,7 @@ const DOWNLOAD_CMD_S xdata download_cmd[] =
   {DPID_CLEAR_TRIGGER_NUMBER, DP_TYPE_BOOL},
   {DPID_LIGHT_STATUS, DP_TYPE_ENUM},
   {DPID_PERSON_IN_RANGE, DP_TYPE_ENUM},
+  {DPID_IF_SUM, DP_TYPE_VALUE},
   {DPID_FACTORY_OP, DP_TYPE_ENUM},
   {DPID_OTA_RESULT, DP_TYPE_ENUM},
 };
@@ -209,6 +210,7 @@ void all_data_update(void)
 	mcu_dp_enum_update(DPID_PERSON_IN_RANGE,person_in_range_flag); //枚举型数据上报;
 	
     mcu_dp_enum_update(DPID_FACTORY_OP, 6); //枚举型数据上报;
+	//mcu_dp_value_update(DPID_IF_SUM, 0); //VALUE型数据上报;
 }
 
 

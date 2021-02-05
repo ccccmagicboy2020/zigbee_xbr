@@ -1175,6 +1175,7 @@ void main()
 					if (radar_trig_times_last != radar_trig_times)
 					{
 						mcu_dp_value_update(DPID_RADAR_TRIGGER_TIMES,radar_trig_times);
+						mcu_dp_value_update(DPID_IF_SUM, SUM2);
 						radar_trig_times_last = radar_trig_times;
 					}
 				}
